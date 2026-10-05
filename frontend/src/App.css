@@ -866,6 +866,81 @@ img {
   color: var(--slate-700);
 }
 
+.traveler-reviews {
+  padding-top: 28px;
+}
+
+.review-disclaimer {
+  margin: 10px 0 0;
+  color: var(--slate-500);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.review-count {
+  color: var(--brand-800);
+  font-size: 0.9rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.review-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid rgba(15, 118, 110, 0.1);
+  border-radius: 18px;
+  background: linear-gradient(145deg, #ffffff 0%, #f4fbf8 100%);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.045);
+}
+
+.review-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.review-country {
+  color: var(--slate-800);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.review-rating {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  color: #a65c00;
+}
+
+.review-rating > span:first-child {
+  letter-spacing: 0.04em;
+}
+
+.review-rating-value {
+  color: var(--slate-500);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.review-card p {
+  margin: 14px 0 0;
+  color: var(--slate-700);
+  line-height: 1.65;
+}
+
+.review-more-btn {
+  display: flex;
+  margin: 22px auto 0;
+}
+
 .cta-banner {
   display: flex;
   align-items: center;
@@ -907,6 +982,10 @@ img {
     grid-template-columns: 1fr;
   }
 
+  .review-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .nav-wrap,
   .dashboard-head,
   .section-header,
@@ -944,6 +1023,14 @@ img {
   .row-actions {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header:has(.review-count) {
+    align-items: flex-start;
   }
 
   .big-btn,

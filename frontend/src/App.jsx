@@ -126,6 +126,57 @@ const sampleCars = [
   },
 ]
 
+const reviewCountries = [
+  'United States', 'United Kingdom', 'Canada', 'Australia', 'New Zealand',
+  'Germany', 'France', 'Italy', 'Spain', 'Netherlands', 'Belgium', 'Switzerland',
+  'Sweden', 'Norway', 'Denmark', 'Finland', 'Ireland', 'Portugal', 'Greece', 'Austria',
+  'Poland', 'Czechia', 'Hungary', 'Romania', 'Bulgaria', 'Croatia', 'Serbia', 'Ukraine',
+  'Turkey', 'Israel', 'United Arab Emirates', 'Saudi Arabia', 'Qatar', 'India', 'Pakistan',
+  'Bangladesh', 'Sri Lanka', 'Nepal', 'Thailand', 'Vietnam', 'Cambodia', 'Malaysia',
+  'Singapore', 'Indonesia', 'Philippines', 'Japan', 'South Korea', 'China', 'Taiwan',
+  'Hong Kong', 'South Africa', 'Kenya', 'Tanzania', 'Uganda', 'Rwanda', 'Ethiopia',
+  'Ghana', 'Nigeria', 'Senegal', 'Morocco', 'Egypt', 'Tunisia', 'Mauritius', 'Seychelles',
+  'Brazil', 'Argentina', 'Chile', 'Peru', 'Colombia', 'Mexico', 'Costa Rica', 'Panama',
+  'Jamaica', 'Trinidad and Tobago', 'Barbados', 'Cuba', 'Iceland', 'Luxembourg', 'Malta',
+  'Estonia', 'Latvia', 'Lithuania', 'Slovakia', 'Slovenia', 'Bosnia and Herzegovina',
+  'Montenegro', 'Albania', 'North Macedonia', 'Georgia', 'Armenia', 'Azerbaijan',
+  'Kazakhstan', 'Uzbekistan', 'Mongolia', 'Fiji', 'Samoa', 'Papua New Guinea',
+  'Uruguay', 'Ecuador', 'Bolivia',
+]
+
+const reviewOpeners = [
+  'Collecting the car was easy and the vehicle felt reliable',
+  'Great communication with the owner and no surprises',
+  'Having our own car made exploring the island so much easier',
+  'Clean, comfortable car and a smooth handover',
+  'Everything was arranged quickly, even before we arrived',
+  'A convenient way to get around and see more of Zanzibar',
+  'The owner was helpful and the car was ready on time',
+  'Simple pickup and a comfortable drive throughout our stay',
+  'Good value and a straightforward rental experience',
+  'Friendly service made our holiday transport stress-free',
+]
+
+const reviewDetails = [
+  'and the trip from Stone Town to Nungwi was a highlight.',
+  'which made our beach days around Kendwa much simpler.',
+  'and we loved stopping in villages along the east coast.',
+  'so we could visit Jozani Forest at our own pace.',
+  'and getting to our hotel from the airport was straightforward.',
+  'which gave us the freedom to explore Paje and Jambiani.',
+  'and the extra room made family day trips comfortable.',
+  'so we could catch sunset in Stone Town after a beach day.',
+  'and exploring the island beyond our resort was easy.',
+  'which made our first visit to Zanzibar feel effortless.',
+]
+
+const travelerReviews = reviewCountries.map((country, index) => ({
+  id: index + 1,
+  country,
+  comment: `${reviewOpeners[index % reviewOpeners.length]}, ${reviewDetails[Math.floor(index / reviewOpeners.length)]}`,
+  rating: Math.floor(Math.random() * 3) + 3,
+}))
+
 const formatPrice = (value) =>
   new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -280,6 +331,7 @@ function Layout({ children, user, setUser }) {
 function HomePage({ cars, filters, setFilters }) {
   const featured = cars.filter((car) => car.availability === 'Available').slice(0, 3)
   const navigate = useNavigate()
+  const [visibleReviewCount, setVisibleReviewCount] = useState(6)
 
   const handleSearch = (event) => {
     event.preventDefault()
@@ -405,6 +457,40 @@ function HomePage({ cars, filters, setFilters }) {
             <CarCard key={car.id} car={car} />
           ))}
         </div>
+      </section>
+
+      <section className="container section-block traveler-reviews">
+        <div className="section-header">
+          <div>
+            <span className="eyebrow">From around the world</span>
+            <h2>Traveler comment examples</h2>
+            <p className="review-disclaimer">Illustrative sample comments for preview only. These are not verified customer submissions.</p>
+          </div>
+          <span className="review-count">100 sample comments</span>
+        </div>
+        <div className="review-grid">
+          {travelerReviews.slice(0, visibleReviewCount).map((review) => (
+            <article className="review-card" key={review.id}>
+              <div className="review-card-top">
+                <span className="review-country">Traveler from {review.country}</span>
+                <span className="review-rating" aria-label={`${review.rating} out of 5 stars`}>
+                  <span aria-hidden="true">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
+                  <span className="review-rating-value">{review.rating}/5</span>
+                </span>
+              </div>
+              <p>“{review.comment}”</p>
+            </article>
+          ))}
+        </div>
+        {visibleReviewCount < travelerReviews.length && (
+          <button
+            type="button"
+            className="secondary-btn review-more-btn"
+            onClick={() => setVisibleReviewCount((count) => Math.min(count + 6, travelerReviews.length))}
+          >
+            Show more comments ({travelerReviews.length - visibleReviewCount} remaining)
+          </button>
+        )}
       </section>
 
       <section className="how-it-works section-block">
