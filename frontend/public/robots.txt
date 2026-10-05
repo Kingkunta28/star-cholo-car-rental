@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zanzibarride.com/sitemap.xml
+
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /register
+Disallow: /api/
