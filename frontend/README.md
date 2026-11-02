@@ -1,16 +1,28 @@
-# React + Vite
+# Zanzibar Ride
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A responsive Zanzibar tourist transportation website built with React, React Router and Vite. Visitors can explore services and destination guides, then send a transfer inquiry directly through WhatsApp without creating an account.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```sh
+npm install
+npm run dev
+```
 
-## React Compiler
+## Configure contact details
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Copy `.env.example` to `.env.local` and set the business contact channels:
 
-## Expanding the Oxlint configuration
+- `VITE_WHATSAPP_NUMBER`: business WhatsApp number in international format, digits only (for example, country code followed by the number).
+- `VITE_PHONE_NUMBER`: optional phone number for the call link.
+- `VITE_CONTACT_EMAIL`: optional email address.
+- `VITE_SITE_URL`: canonical site origin used by metadata and structured data.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+The WhatsApp button and floating contact link appear once a business WhatsApp number is configured. The inquiry form asks the business to confirm availability and pricing; submitting does not confirm a booking.
+
+## Production build
+
+```sh
+npm run build
+npm run preview
+```

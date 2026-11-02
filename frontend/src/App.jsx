@@ -1,263 +1,227 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, Route, Routes, useNavigate, useLocation, useParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import './App.css'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api'
-const SITE_URL = 'https://zanzibarride.com'
+const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://zanzibarride.com').replace(/\/+$/, '')
+const WHATSAPP_NUMBER = (import.meta.env.VITE_WHATSAPP_NUMBER || '').replace(/\D/g, '')
+const PHONE_NUMBER = import.meta.env.VITE_PHONE_NUMBER || ''
+const CONTACT_EMAIL = import.meta.env.VITE_CONTACT_EMAIL || ''
+const CURRENT_YEAR = new Date().getFullYear()
 
-const locationMeta = {
-  'stone-town': {
-    name: 'Stone Town',
-    title: 'Car Rental Stone Town Zanzibar | Find Your Ride',
-    h1: 'Car Rental in Stone Town, Zanzibar',
-    description: 'Looking for a car rental in Stone Town, Zanzibar? Explore available cars near Stone Town and connect directly with local owners for your island trip.',
-    overview: 'Stone Town is the cultural heart of Zanzibar, with historic streets, markets and a perfect base for exploring the island by car.',
-  },
-  nungwi: {
-    name: 'Nungwi',
-    title: 'Car Rental Nungwi Zanzibar | Rent a Car',
-    h1: 'Car Rental in Nungwi, Zanzibar',
-    description: 'Find cars for rent in Nungwi, Zanzibar and explore beaches, coastal roads and island day trips with ease.',
-    overview: 'Nungwi is one of Zanzibar’s most popular beach areas, ideal for travelers who want a relaxed northern getaway and easy road access.',
-  },
-  kendwa: {
-    name: 'Kendwa',
-    title: 'Car Rental Kendwa Zanzibar | Find Your Ride',
-    h1: 'Car Rental in Kendwa, Zanzibar',
-    description: 'Explore Kendwa and the northern coast with a reliable rental car for beach days, village visits and day trips around Zanzibar.',
-    overview: 'Kendwa offers a beautiful coastline and a laid-back atmosphere, making it a popular stop for travelers who want flexibility.',
-  },
-  paje: {
-    name: 'Paje',
-    title: 'Car Rental Paje Zanzibar | Find a Car',
-    h1: 'Car Rental in Paje, Zanzibar',
-    description: 'Looking for a car rental in Paje, Zanzibar? Explore available cars and connect directly with local owners for your east-coast adventure.',
-    overview: 'Paje is a favorite for beach lovers and travelers who want to explore Zanzibar’s east coast with convenience and freedom.',
-  },
-  jambiani: {
-    name: 'Jambiani',
-    title: 'Car Rental Jambiani Zanzibar | Rent a Car',
-    h1: 'Car Rental in Jambiani, Zanzibar',
-    description: 'Rent a car in Jambiani, Zanzibar for relaxed beach travel, village stops and easy access to nearby destinations.',
-    overview: 'Jambiani is known for its quiet beaches and relaxed island feel, making it a great base for road trips and scenic coastal drives.',
-  },
-  matemwe: {
-    name: 'Matemwe',
-    title: 'Car Rental Matemwe Zanzibar | Zanzibar Car Hire',
-    h1: 'Car Rental in Matemwe, Zanzibar',
-    description: 'Find a car rental in Matemwe, Zanzibar and enjoy quick access to beaches, villages and scenic driving routes across the island.',
-    overview: 'Matemwe is a peaceful coastal area that suits travelers looking for an easygoing place to stay while exploring Zanzibar.',
-  },
-  kiwengwa: {
-    name: 'Kiwengwa',
-    title: 'Car Rental Kiwengwa Zanzibar | Travel by Car',
-    h1: 'Car Rental in Kiwengwa, Zanzibar',
-    description: 'Discover available cars for rent in Kiwengwa, Zanzibar and plan your beachside getaway with local car owners.',
-    overview: 'Kiwengwa is a beautiful stretch of coast that works well for visitors who want a quieter setting and flexible transport options.',
-  },
+const photo = (id, width = 900) =>
+  `https://images.unsplash.com/${id}?auto=format&fit=crop&w=${width}&q=82`
+
+// Locally hosted photography lives in /public/images as <name>-960.jpg, -1280.jpg and -1920.jpg.
+// Every file is credited in PHOTO_CREDITS, which the footer renders.
+const LOCAL_WIDTHS = [960, 1280, 1920]
+const isLocal = (image) => image.startsWith('local:')
+const imageUrl = (image, width = 1280) => {
+  if (!isLocal(image)) return photo(image, width)
+  const size = LOCAL_WIDTHS.find((step) => step >= width) || LOCAL_WIDTHS.at(-1)
+  return `/images/${image.slice(6)}-${size}.jpg`
 }
+const imageSrcSet = (image, widths) => (isLocal(image)
+  ? LOCAL_WIDTHS.map((width) => `${imageUrl(image, width)} ${width}w`)
+  : widths.map((width) => `${photo(image, width)} ${width}w`)).join(', ')
 
-const defaultForm = {
-  title: '',
-  make: '',
-  model: '',
-  year: '',
-  registration_number: '',
-  price_per_day: '',
-  location: '',
-  transmission: 'Automatic',
-  fuel_type: 'Petrol',
-  seats: 5,
-  description: '',
-  availability: 'Available',
-}
-
-const sampleCars = [
+const destinations = [
   {
-    id: 1,
-    title: 'Toyota Corolla for Stone Town trips',
-    make: 'Toyota',
-    model: 'Corolla',
-    year: 2022,
-    registration_number: 'KLM-2022',
-    price_per_day: '45',
-    location: 'Stone Town',
-    transmission: 'Automatic',
-    fuel_type: 'Petrol',
-    seats: 5,
-    description: 'Easy to drive around Stone Town, beach roads and day trips. Clean, comfortable and ideal for couples or small families visiting Zanzibar.',
-    availability: 'Available',
-    image_url: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?auto=format&fit=crop&w=1200&q=80',
-    owner: { id: 1, full_name: 'Default Owner', phone: '+255700000001' },
+    slug: 'stone-town', name: 'Stone Town', area: 'Zanzibar City',
+    image: 'local:stone-town-forodhani', alt: 'The domed pavilion in Forodhani Gardens on the Stone Town waterfront',
+    description: 'Wind through coral-stone lanes, lively markets and carved wooden doorways in the island’s historic heart.',
+    overview: 'Stone Town is a living cultural centre shaped by African, Arab, Indian and European influences. Its lanes are best explored on foot, with a driver making arrival, hotel connections and onward trips simple.',
+    experience: 'Spend time around the Old Fort and Forodhani Gardens, browse the market and pause for Swahili coffee in the old quarter.',
+    activities: ['Walk the historic lanes with a local guide', 'Visit the Old Fort and House of Wonders area', 'Browse Darajani Market', 'Arrange a sunset pickup from Forodhani Gardens'],
+    location: 'West coast of Unguja, beside Zanzibar City and the harbour.',
   },
   {
-    id: 2,
-    title: 'Honda Civic for North Coast drives',
-    make: 'Honda',
-    model: 'Civic',
-    year: 2021,
-    registration_number: 'TZA-1987',
-    price_per_day: '52',
-    location: 'Nungwi',
-    transmission: 'Automatic',
-    fuel_type: 'Petrol',
-    seats: 5,
-    description: 'Perfect for exploring northern Zanzibar beaches and scenic coastal routes. Spacious interior, smooth drive and excellent comfort for holiday travel.',
-    availability: 'Available',
-    image_url: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=80',
-    owner: { id: 1, full_name: 'Default Owner', phone: '+255700000002' },
+    slug: 'nungwi-beach', name: 'Nungwi Beach', area: 'North Zanzibar',
+    image: 'local:nungwi-beach', alt: 'Turquoise water and white sand at Nungwi Beach',
+    description: 'Clear northern waters, dhow-building traditions and lively evenings make Nungwi a favourite island escape.',
+    overview: 'At Zanzibar’s northern tip, Nungwi is known for its broad beach and swimming conditions that are less affected by the tide than many east-coast shores.',
+    experience: 'Enjoy a beach day, see traditional dhow craft or plan a boat outing. A private driver makes the north-coast journey comfortable from the airport or Stone Town.',
+    activities: ['Swim and relax on the northern shore', 'See local dhow-building workshops', 'Book a sunset dhow cruise', 'Connect to nearby Kendwa by road'],
+    location: 'Northern tip of Unguja, around 60 km from Stone Town by road.',
   },
   {
-    id: 3,
-    title: 'Ford Ranger for beach and island adventures',
-    make: 'Ford',
-    model: 'Ranger',
-    year: 2020,
-    registration_number: 'TZM-6644',
-    price_per_day: '70',
-    location: 'Paje',
-    transmission: 'Automatic',
-    fuel_type: 'Diesel',
-    seats: 5,
-    description: 'Designed for longer island drives, luggage-heavy trips and flexible family travel. Comfortable, reliable and ready for your Zanzibar getaway.',
-    availability: 'Available',
-    image_url: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
-    owner: { id: 1, full_name: 'Default Owner', phone: '+255700000003' },
+    slug: 'kendwa-beach', name: 'Kendwa Beach', area: 'North Zanzibar',
+    image: 'local:kendwa-beach', alt: 'The long, tree-lined sweep of Kendwa Beach',
+    description: 'A wide sweep of pale sand and calm blue water on Zanzibar’s much-loved north coast.',
+    overview: 'Kendwa offers a relaxed beach setting with open views across the Indian Ocean. It sits just south of Nungwi and works well as a full-day outing or a hotel transfer stop.',
+    experience: 'Settle in for a swim, enjoy the beach at an easy pace and stay for the changing colours near sunset.',
+    activities: ['Spend a day by the water', 'Take a northern-coast beach walk', 'Arrange a sunset return transfer', 'Combine Kendwa with a Nungwi visit'],
+    location: 'North-west coast of Unguja, just south of Nungwi.',
+  },
+  {
+    slug: 'paje-beach', name: 'Paje Beach', area: 'South-east Zanzibar',
+    image: 'local:paje-low-tide', alt: 'Rippled sand flats at Paje Beach at low tide',
+    description: 'A breezy east-coast village known for its long beach, kite-surfing scene and relaxed cafés.',
+    overview: 'Paje pairs a long, tide-shaped shoreline with a welcoming village atmosphere. It is a popular base for water sports and for exploring Zanzibar’s south-east coast.',
+    experience: 'Watch kite surfers in season, take a beach walk at low tide or settle into one of the village cafés between swims.',
+    activities: ['Try kite surfing with a local school', 'Walk the shoreline at low tide', 'Explore village cafés and shops', 'Travel onward to Jambiani or The Rock'],
+    location: 'East coast of Unguja, south of the island’s central area.',
+  },
+  {
+    slug: 'jambiani', name: 'Jambiani', area: 'South-east Zanzibar',
+    image: 'local:jambiani-beach', alt: 'Shallow turquoise water off the beach at Jambiani',
+    description: 'A string of coastal villages where seaweed farming, turquoise shallows and unhurried days meet.',
+    overview: 'Jambiani stretches along the south-east coast, where village life sits close to the shore. Its wide tidal flats reveal a different view of the ocean throughout the day.',
+    experience: 'Walk between village and beach, learn about local seaweed farming and take time to enjoy the quiet rhythm of the coast.',
+    activities: ['Walk the village shoreline', 'Learn about seaweed farming', 'Swim around high tide', 'Pair a visit with Paje or Jozani Forest'],
+    location: 'South-east coast of Unguja, below Paje.',
+  },
+  {
+    slug: 'kizimkazi', name: 'Kizimkazi', area: 'South Zanzibar',
+    image: 'local:kizimkazi-mosque', alt: 'Carved calligraphy inside the historic Kizimkazi mosque',
+    description: 'A quiet southern coast with fishing-village roots, historic mosques and boat trips on the water.',
+    overview: 'Kizimkazi is a collection of southern-coast villages with a strong maritime character. Visitors come for the scenery, local history and boat excursions.',
+    experience: 'Discover the old mosque and coastal villages, or arrange a locally operated boat trip. Wildlife sightings are never guaranteed, so choose responsible operators.',
+    activities: ['Visit the historic Kizimkazi mosque', 'Arrange a responsible boat excursion', 'Explore the southern coastline', 'Stop at a village restaurant'],
+    location: 'South-west coast of Unguja, around 60 km from Stone Town.',
+  },
+  {
+    slug: 'the-rock-restaurant', name: 'The Rock Restaurant', area: 'Michamvi, South-east Zanzibar',
+    image: 'local:the-rock', alt: 'The Rock Restaurant on its coral outcrop at Michamvi',
+    description: 'A memorable dining stop set above the water on the Michamvi peninsula.',
+    overview: 'The Rock is a small restaurant in a striking sea setting off Michamvi. Tide conditions affect how guests reach it, and reservations are advisable before travelling.',
+    experience: 'Enjoy the coastal setting and a seafood-focused menu, then take in the views across the lagoon. Check opening times and table availability directly before your visit.',
+    activities: ['Reserve a table in advance', 'Check tide and access arrangements', 'Explore nearby Michamvi beaches', 'Arrange a return pickup after dinner'],
+    location: 'Michamvi Pingwe, on the south-east peninsula of Unguja.',
+  },
+  {
+    slug: 'prison-island', name: 'Prison Island', area: 'Off Stone Town',
+    image: 'local:changuu-from-stone-town', alt: 'Boats off Stone Town with Changuu (Prison) Island on the horizon',
+    description: 'A short boat ride from Stone Town brings you to a small island with history and coastal views.',
+    overview: 'Also known as Changuu Island, Prison Island is reached by boat from Stone Town. Visitors can explore the island and its tortoise sanctuary; the boat crossing is arranged separately from road transport.',
+    experience: 'Pair a boat excursion with time in Stone Town. Your driver can coordinate a convenient pickup and drop-off near the harbour.',
+    activities: ['Take a boat from Stone Town', 'Visit the island’s tortoise sanctuary', 'Walk the shoreline and historic grounds', 'Combine with a Stone Town afternoon'],
+    location: 'A few kilometres offshore from Stone Town; reached by boat.',
+  },
+  {
+    slug: 'nakupenda-sandbank', name: 'Nakupenda Sandbank', area: 'Off Stone Town',
+    image: 'local:sandbank-prison-island', alt: 'Clear water over a sandbank in the channel off Stone Town',
+    description: 'A shifting ribbon of white sand and clear water, reached by boat from Stone Town.',
+    overview: 'Nakupenda is a sandbank off the west coast that appears and changes with the tide. Boat trips are weather- and tide-dependent, so confirm conditions with your operator.',
+    experience: 'Swim, snorkel and relax on the sand when conditions allow. Road transfer can take you to the departure point; the excursion itself is by boat.',
+    activities: ['Book a boat trip with a local operator', 'Swim or snorkel when conditions permit', 'Check tide and weather before departure', 'Add a Stone Town visit to the same day'],
+    location: 'Off the west coast of Unguja, accessed by boat from Stone Town.',
+  },
+  {
+    slug: 'jozani-forest', name: 'Jozani Forest', area: 'Central-east Zanzibar',
+    image: 'local:jozani-colobus', alt: 'Zanzibar red colobus monkeys among the trees',
+    description: 'Walk beneath a forest canopy and look for the island’s distinctive red colobus monkeys.',
+    overview: 'Jozani Chwaka Bay National Park protects a rare coastal forest and mangrove ecosystem. The red colobus monkey is native to Zanzibar, though wildlife sightings can vary.',
+    experience: 'Follow marked trails with a local guide, learn about the forest habitat and continue through the mangrove boardwalk.',
+    activities: ['Walk the forest trails with a guide', 'Look for Zanzibar red colobus monkeys', 'Visit the mangrove boardwalk', 'Combine with Paje or Jambiani'],
+    location: 'Central-east Unguja, between Stone Town and the south-east coast.',
+  },
+  {
+    slug: 'matemwe', name: 'Matemwe', area: 'North-east Zanzibar',
+    image: 'local:matemwe-beach', alt: 'Palm-fringed white sand at Matemwe',
+    description: 'A peaceful north-east coast village facing the reef-fringed waters near Mnemba Island.',
+    overview: 'Matemwe is a quieter coastal destination with long views over the reef. Excursions to nearby marine areas are operated by local providers and depend on sea conditions.',
+    experience: 'Enjoy a slower beach day, visit village cafés or arrange a locally operated snorkelling trip after checking conditions and conservation guidance.',
+    activities: ['Relax along the north-east coast', 'Arrange a responsible snorkelling trip', 'Explore nearby village life', 'Connect by road with Nungwi or Kiwengwa'],
+    location: 'North-east coast of Unguja, opposite Mnemba Atoll.',
+  },
+  {
+    slug: 'pwani-mchangani', name: 'Pwani Mchangani', area: 'North-east Zanzibar',
+    image: 'local:kiwengwa-coast', alt: 'Clear shallows on the north-east coast at neighbouring Kiwengwa',
+    description: 'A tranquil stretch of north-east coastline with palm-lined shores and small village paths.',
+    overview: 'Pwani Mchangani offers a quieter alternative on the north-east coast, with a long beach and easy connections to nearby Kiwengwa and Matemwe.',
+    experience: 'Spend an unhurried day by the sea, explore the neighbouring coast and plan around the east coast’s changing tides.',
+    activities: ['Enjoy a quiet beach day', 'Walk the coast at low tide', 'Visit nearby Kiwengwa', 'Arrange hotel-to-hotel transport'],
+    location: 'North-east coast of Unguja, between Kiwengwa and Matemwe.',
   },
 ]
 
-const reviewCountries = [
-  'United States', 'United Kingdom', 'Canada', 'Australia', 'New Zealand',
-  'Germany', 'France', 'Italy', 'Spain', 'Netherlands', 'Belgium', 'Switzerland',
-  'Sweden', 'Norway', 'Denmark', 'Finland', 'Ireland', 'Portugal', 'Greece', 'Austria',
-  'Poland', 'Czechia', 'Hungary', 'Romania', 'Bulgaria', 'Croatia', 'Serbia', 'Ukraine',
-  'Turkey', 'Israel', 'United Arab Emirates', 'Saudi Arabia', 'Qatar', 'India', 'Pakistan',
-  'Bangladesh', 'Sri Lanka', 'Nepal', 'Thailand', 'Vietnam', 'Cambodia', 'Malaysia',
-  'Singapore', 'Indonesia', 'Philippines', 'Japan', 'South Korea', 'China', 'Taiwan',
-  'Hong Kong', 'South Africa', 'Kenya', 'Tanzania', 'Uganda', 'Rwanda', 'Ethiopia',
-  'Ghana', 'Nigeria', 'Senegal', 'Morocco', 'Egypt', 'Tunisia', 'Mauritius', 'Seychelles',
-  'Brazil', 'Argentina', 'Chile', 'Peru', 'Colombia', 'Mexico', 'Costa Rica', 'Panama',
-  'Jamaica', 'Trinidad and Tobago', 'Barbados', 'Cuba', 'Iceland', 'Luxembourg', 'Malta',
-  'Estonia', 'Latvia', 'Lithuania', 'Slovakia', 'Slovenia', 'Bosnia and Herzegovina',
-  'Montenegro', 'Albania', 'North Macedonia', 'Georgia', 'Armenia', 'Azerbaijan',
-  'Kazakhstan', 'Uzbekistan', 'Mongolia', 'Fiji', 'Samoa', 'Papua New Guinea',
-  'Uruguay', 'Ecuador', 'Bolivia',
+const services = [
+  { number: '01', name: 'Airport Transfers', description: 'A reliable pickup or drop-off at Abeid Amani Karume International Airport, arranged around your arrival details.', image: 'local:airport-terminal', alt: 'The terminal at Abeid Amani Karume International Airport' },
+  { number: '02', name: 'Hotel Transfers', description: 'Travel between hotels, resorts and guesthouses without the hassle of arranging transport on arrival.', image: 'local:nungwi-palms', alt: 'Palm-shaded beachfront seating at Nungwi' },
+  { number: '03', name: 'Private Island Tours', description: 'Explore the places on your list with a private driver and a day shaped around your interests.', image: 'local:fuoni-road', alt: 'Cars and motorbikes on a sunlit road in Fuoni, Zanzibar' },
+  { number: '04', name: 'Beach Transfers', description: 'Reach the coast comfortably, from a quick swim near town to a full day on the northern beaches.', image: 'local:nungwi-shoreline', alt: 'Clear water washing onto the sand at Nungwi' },
+  { number: '05', name: 'Full-Day Transportation', description: 'Connect several stops in one day with flexible timing and space for the plans that matter to you.', image: 'local:forodhani-waterfront', alt: 'Aerial view of Forodhani Gardens and the Stone Town waterfront road' },
+  { number: '06', name: 'Family & Group Transfers', description: 'Tell us your passenger count and luggage needs so we can discuss a suitable vehicle for your group.', image: 'local:stone-town-seafront', alt: 'People gathered along the Stone Town seafront' },
 ]
 
-const reviewOpeners = [
-  'Collecting the car was easy and the vehicle felt reliable',
-  'Great communication with the owner and no surprises',
-  'Having our own car made exploring the island so much easier',
-  'Clean, comfortable car and a smooth handover',
-  'Everything was arranged quickly, even before we arrived',
-  'A convenient way to get around and see more of Zanzibar',
-  'The owner was helpful and the car was ready on time',
-  'Simple pickup and a comfortable drive throughout our stay',
-  'Good value and a straightforward rental experience',
-  'Friendly service made our holiday transport stress-free',
+const reasons = [
+  ['Professional local drivers', 'Travel with drivers who know Zanzibar’s roads and communities.'],
+  ['Comfortable, clean vehicles', 'Tell us what your group needs and we will discuss an appropriate option.'],
+  ['Reliable pickup planning', 'Share your flight, hotel or meeting point so pickup details are clear.'],
+  ['Flexible arrangements', 'Plan a one-way transfer, a few stops or a full day on the road.'],
+  ['Local destination knowledge', 'Get practical help with routes, timing and nearby places to visit.'],
+  ['Personal transportation', 'Your trip is arranged for your party, not shared with a tour group.'],
+  ['Clear pricing discussion', 'Confirm availability and the fare directly with the team before travel.'],
 ]
 
-const reviewDetails = [
-  'and the trip from Stone Town to Nungwi was a highlight.',
-  'which made our beach days around Kendwa much simpler.',
-  'and we loved stopping in villages along the east coast.',
-  'so we could visit Jozani Forest at our own pace.',
-  'and getting to our hotel from the airport was straightforward.',
-  'which gave us the freedom to explore Paje and Jambiani.',
-  'and the extra room made family day trips comfortable.',
-  'so we could catch sunset in Stone Town after a beach day.',
-  'and exploring the island beyond our resort was easy.',
-  'which made our first visit to Zanzibar feel effortless.',
+const travelNotes = [
+  { label: 'Beaches', link: 'kendwa-beach', title: 'Choose your coast by the day', text: 'The north is known for swimming at different tide levels; the east coast changes dramatically with the tide. Check local conditions and plan beach time accordingly.', position: 'center 88%', image: 'local:kendwa-starfish', alt: 'A red cushion starfish on white sand at Kendwa' },
+  { label: 'History', link: 'stone-town', title: 'Give Stone Town time', text: 'The old quarter is best explored on foot. Arrange a drop-off near the historic centre, then let its markets, carved doors and waterfront unfold at walking pace.', image: 'local:stone-town-door', alt: 'An ornately carved wooden door in Stone Town' },
+  { label: 'Nature', link: 'jozani-forest', title: 'Make room for the forest', text: 'Jozani’s forest and mangrove habitats offer a different side of the island. A guide can explain the ecosystem and help visitors move through it respectfully.', image: 'local:red-colobus', alt: 'A Zanzibar red colobus monkey in Jozani Forest' },
+  { label: 'Local life', link: 'jambiani', title: 'Travel with curiosity', text: 'Try Swahili food, ask before photographing people and leave time for village stops. A little flexibility often makes a day feel less like a checklist.', image: 'local:jambiani-fisherman', alt: 'A fisherman preparing his dhow on the shore at Jambiani' },
 ]
 
-const travelerReviews = reviewCountries.map((country, index) => ({
-  id: index + 1,
-  country,
-  comment: `${reviewOpeners[index % reviewOpeners.length]}, ${reviewDetails[Math.floor(index / reviewOpeners.length)]}`,
-  rating: Math.floor(Math.random() * 3) + 3,
-}))
+const HERO_PHOTO = { image: 'local:dhow-sunset', alt: 'Traditional dhows on the water at sunset off Zanzibar', position: '42% 55%' }
+const CLOSING_PHOTO = { image: 'local:kendwa-shore', alt: 'Turquoise water and a long white-sand beach on Zanzibar', position: 'center 92%' }
+// [file on Wikimedia Commons, author, licence]. Generated from the image download manifest.
+const PHOTO_CREDITS = [
+  ['Dhow Sunset, Zanzibar (10164046475).jpg', 'Rod Waddington from Kergunyah, Australia', 'CC BY-SA 2.0'],
+  ['Zanzibar, Tanzania - panoramio (2).jpg', 'The Erica Chang', 'CC BY 3.0'],
+  ['Parque Forodhani, Stone Town, Zanzíbar, Tanzania, 2024-05-31, DD 29-31 HDR.jpg', 'Diego Delso', 'CC BY-SA 4.0'],
+  ['Nungwi,Zanzibar - panoramio.jpg', 'Jang Woo Lee', 'CC BY 3.0'],
+  ['KB Beach.jpg', 'Kibabe', 'CC BY-SA 3.0'],
+  ['Paje beach at low tide.jpg', 'Matt Kieffer from London, United Kingdom', 'CC BY-SA 2.0'],
+  ['Jambiani beach.jpg', 'Jonathan Dalrymple', 'CC BY-SA 4.0'],
+  ['Calligraphy at historic Kizimkazi Mosque, Kusini DC, South Zanzibar, Tanzania.jpg', 'Mnazini', 'CC BY 4.0'],
+  ['The Rock Restaurant, Zanzibar (53801362304).jpg', 'Rod Waddington', 'CC BY-SA 2.0'],
+  ['Changuu Island in far.jpg', 'Luganosamwel', 'CC BY-SA 4.0'],
+  ['Red Colobus 7.jpg', 'Olivier Lejade from France', 'CC BY-SA 2.0'],
+  ['Beach at Matemwe.jpg', 'Olivier Lejade from France', 'CC BY-SA 2.0'],
+  ['Abeid Amani Karume International Airport.jpg', 'Jennifer Davies', 'CC BY 2.0'],
+  ['Paradise at Nungwi, Kaskazini A, Unguja North, Zanzibar.jpg', 'Mangapwani', 'CC BY-SA 4.0'],
+  ['FUONI ZANZIBAR.jpg', 'Rasheedhrasheed', 'CC BY-SA 4.0'],
+  ['Nungwi Beach Zanzibar.jpg', 'Kamusiyakitaa', 'CC BY-SA 4.0'],
+  ['Forodhani jubilee gardens Zanzibar.jpg', 'Moongateclimber', 'Public domain'],
+  ['Forodhani Gardens (34023630713).jpg', 'David Stanley from Nanaimo, Canada', 'CC BY 2.0'],
+  ['Carmen fiano kendwa zanzibar tanzania.jpg', 'Giuseppe palumbo', 'CC0'],
+  ['Carved wooden door — in Stone Town, Zanzibar City.jpg', 'Nannarella', 'Public domain'],
+  ['Piliocolobus kirkii.jpg', 'Riccardoariotti', 'CC BY-SA 4.0'],
+  ['Fisherman maintaining his dhow.jpg', 'RichieRR', 'CC BY-SA 4.0'],
+  ['Sandbank near Prison Island - panoramio.jpg', 'lazyweaver', 'CC BY 3.0'],
+  ['Zanzibar kiwengwa.jpg', 'AliceMartinelli8', 'CC BY-SA 4.0'],
+]
 
-const formatPrice = (value) =>
-  new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'TZS',
-    maximumFractionDigits: 0,
-  }).format(value)
-
-const slugify = (value = '') =>
-  String(value)
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-
-const getCanonicalUrl = (path = '/') => `${SITE_URL}${path === '/' ? '/' : path.replace(/\/+$/, '')}`
-
-const getWhatsAppLink = (phone, title) => {
-  const normalizedPhone = String(phone || '').replace(/\D/g, '')
-  const message = encodeURIComponent(
-    `Hello, I am interested in renting your ${title} listed on the car rental platform.`
-  )
-  return `https://wa.me/${normalizedPhone}?text=${message}`
+const today = () => {
+  const date = new Date()
+  const offset = date.getTimezoneOffset()
+  return new Date(date.getTime() - offset * 60_000).toISOString().slice(0, 10)
 }
 
-const parseJsonResponse = async (response) => {
-  const text = await response.text()
-
-  if (!text) {
-    return {}
-  }
-
-  try {
-    return JSON.parse(text)
-  } catch {
-    return { message: text }
-  }
-}
-
-function useOwnerSession() {
-  const [user, setUser] = useState(() => JSON.parse(localStorage.getItem('ownerUser') || 'null'))
-
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem('ownerUser', JSON.stringify(user))
-    } else {
-      localStorage.removeItem('ownerUser')
-    }
-  }, [user])
-
-  return [user, setUser]
-}
-
-function SeoMeta({ title, description, canonical, image, type = 'website', structuredData }) {
+function SeoMeta({ title, description, image, structuredData }) {
   const location = useLocation()
 
   useEffect(() => {
-    const pageTitle = title || 'Car Rental Zanzibar | Rent a Car & Explore Zanzibar'
-    const pageDescription = description || 'Find cars for rent in Zanzibar and connect directly with local car owners. Explore Stone Town, Nungwi, Paje, Jambiani, Kendwa and more.'
-    const finalCanonical = canonical || getCanonicalUrl(location.pathname)
-    const finalImage = image || 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80'
-
-    document.title = pageTitle
-
+    const canonical = `${SITE_URL}${location.pathname}`
+    document.title = title
     const setMeta = (selector, value, attribute = 'name') => {
-      let element = document.head.querySelector(`meta[${attribute}="${selector}"]`)
-      if (!element) {
-        element = document.createElement('meta')
-        element.setAttribute(attribute, selector)
-        document.head.appendChild(element)
+      let meta = document.head.querySelector(`meta[${attribute}="${selector}"]`)
+      if (!meta) {
+        meta = document.createElement('meta')
+        meta.setAttribute(attribute, selector)
+        document.head.appendChild(meta)
       }
-      element.setAttribute('content', value)
+      meta.setAttribute('content', value)
     }
-
-    setMeta('description', pageDescription)
-    setMeta('og:title', pageTitle, 'property')
-    setMeta('og:description', pageDescription, 'property')
-    setMeta('og:type', type, 'property')
-    setMeta('og:image', finalImage, 'property')
-    setMeta('twitter:title', pageTitle, 'name')
-    setMeta('twitter:description', pageDescription, 'name')
-    setMeta('twitter:image', finalImage, 'name')
+    setMeta('description', description)
+    setMeta('og:title', title, 'property')
+    setMeta('og:description', description, 'property')
+    setMeta('og:type', 'website', 'property')
+    setMeta('og:url', canonical, 'property')
+    setMeta('og:image', image, 'property')
+    setMeta('twitter:card', 'summary_large_image')
+    setMeta('twitter:title', title)
+    setMeta('twitter:description', description)
+    setMeta('twitter:image', image)
 
     let canonicalLink = document.head.querySelector('link[rel="canonical"]')
     if (!canonicalLink) {
@@ -265,11 +229,9 @@ function SeoMeta({ title, description, canonical, image, type = 'website', struc
       canonicalLink.rel = 'canonical'
       document.head.appendChild(canonicalLink)
     }
-    canonicalLink.href = finalCanonical
+    canonicalLink.href = canonical
 
-    const previousScript = document.getElementById('seo-json-ld')
-    if (previousScript) previousScript.remove()
-
+    document.getElementById('seo-json-ld')?.remove()
     if (structuredData) {
       const script = document.createElement('script')
       script.id = 'seo-json-ld'
@@ -277,1085 +239,485 @@ function SeoMeta({ title, description, canonical, image, type = 'website', struc
       script.textContent = JSON.stringify(structuredData)
       document.head.appendChild(script)
     }
-  }, [canonical, description, image, location.pathname, structuredData, title, type])
+  }, [description, image, location.pathname, structuredData, title])
 
   return null
 }
 
-function Layout({ children, user, setUser }) {
-  const navigate = useNavigate()
+const ICON_PATHS = {
+  arrow: <path d="M7 17 17 7M8.5 7H17v8.5" />,
+  arrowDown: <path d="M12 5v14M6.5 13.5 12 19l5.5-5.5" />,
+  arrowLeft: <path d="M19 12H5M11 6l-6 6 6 6" />,
+  driver: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="2.1" /><path d="M3.6 10.6h6.4M14 10.6h6.4M12 14.1v6.4" /></>,
+  car: <><path d="M5.2 12 7 7.6A2.2 2.2 0 0 1 9 6.2h6a2.2 2.2 0 0 1 2 1.4l1.8 4.4" /><rect x="3.5" y="12" width="17" height="5" rx="1.6" /><path d="M6.5 17v2.2M17.5 17v2.2M7 14.5h1.2M15.8 14.5H17" /></>,
+  clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.2V12l3.2 2" /></>,
+  route: <><circle cx="6" cy="18" r="2" /><circle cx="18" cy="6" r="2" /><path d="M8 18h7.5a3 3 0 0 0 0-6h-7a3 3 0 0 1 0-6H16" /></>,
+  compass: <><circle cx="12" cy="12" r="8.5" /><path d="m15.4 8.6-2 4.8-4.8 2 2-4.8z" /></>,
+  user: <><circle cx="12" cy="8.2" r="3.5" /><path d="M5 19.5a7 7 0 0 1 14 0" /></>,
+  chat: <><path d="M20 11.5a7.8 7.8 0 0 1-11.4 6.9L4 19.6l1.2-4.2A7.8 7.8 0 1 1 20 11.5Z" /><path d="M8.8 10h6.4M8.8 13.2h3.8" /></>,
+  pin: <><path d="M12 20.8s6.6-5.8 6.6-11a6.6 6.6 0 0 0-13.2 0c0 5.2 6.6 11 6.6 11Z" /><circle cx="12" cy="9.6" r="2.4" /></>,
+  phone: <path d="M6.6 3.8h2.6l1.4 4-1.9 1.3a11 11 0 0 0 5.2 5.2l1.3-1.9 4 1.4v2.6a2 2 0 0 1-2.2 2A15.5 15.5 0 0 1 4.6 6a2 2 0 0 1 2-2.2Z" />,
+  mail: <><rect x="3.5" y="5.5" width="17" height="13" rx="1.5" /><path d="m4 6.5 8 6.2 8-6.2" /></>,
+  info: <><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5.2M12 7.8v.1" /></>,
+  whatsapp: <><path d="M20.4 11.7a8.4 8.4 0 0 1-12.4 7.4L3.6 20.4l1.3-4.2a8.4 8.4 0 1 1 15.5-4.5Z" /><path d="M9.1 8.3c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.7 1.6c.1.2 0 .5-.1.7l-.5.6c-.1.2-.1.4 0 .6a6.5 6.5 0 0 0 2.4 2.4c.2.1.4.1.6 0l.6-.5c.2-.1.5-.2.7-.1l1.6.7c.3.1.4.3.4.5v.5c0 .3-.1.6-.4.8-.6.4-1.4.6-2.2.4a7.6 7.6 0 0 1-5.2-5.2c-.2-.8 0-1.6.3-2.2Z" fill="currentColor" stroke="none" /></>,
+}
 
-  const handleLogout = async () => {
-    try {
-      await fetch(`${API_BASE}/auth/logout/`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-      })
-    } catch (error) {
-      console.error(error)
-    } finally {
-      setUser(null)
-      navigate('/')
+function Icon({ name, className = 'icon' }) {
+  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">{ICON_PATHS[name]}</svg>
+}
+
+function ButtonContent({ children, icon = 'arrow' }) {
+  return <><span className="button-label">{children}</span><span className="button-icon"><Icon name={icon} /></span></>
+}
+
+const reasonIcons = ['driver', 'car', 'clock', 'route', 'compass', 'user', 'chat']
+const navLinks = [
+  ['Our Services', 'services'], ['Destinations', 'destinations'],
+  ['About Zanzibar', 'inspiration'], ['About Us', 'why-us'], ['Contact Us', 'contact'],
+]
+const prefersReducedMotion = () => typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+
+function useReveal(key) {
+  useEffect(() => {
+    const elements = document.querySelectorAll('[data-reveal]:not(.is-visible)')
+    if (!('IntersectionObserver' in window)) {
+      elements.forEach((element) => element.classList.add('is-visible'))
+      return undefined
     }
-  }
-
-  return (
-    <>
-      <header className="site-header">
-        <div className="container nav-wrap">
-          <Link className="brand" to="/">
-            ZANZIBAR RIDE
-          </Link>
-          <nav className="main-nav">
-            <Link to="/">Home</Link>
-            <Link to="/cars">Explore Cars</Link>
-            <Link to="/about">About Zanzibar</Link>
-            <Link to="/faq">FAQ</Link>
-          </nav>
-          {user ? (
-            <div className="nav-actions owner-nav">
-              <Link to="/dashboard" className="nav-cta-link">Dashboard</Link>
-              <button type="button" className="ghost-btn" onClick={handleLogout}>Logout</button>
-            </div>
-          ) : (
-            <div className="nav-actions owner-nav" />
-          )}
-        </div>
-      </header>
-      <main>{children}</main>
-    </>
-  )
-}
-
-function HomePage({ cars, filters, setFilters }) {
-  const featured = cars.filter((car) => car.availability === 'Available').slice(0, 3)
-  const navigate = useNavigate()
-  const [visibleReviewCount, setVisibleReviewCount] = useState(6)
-
-  const handleSearch = (event) => {
-    event.preventDefault()
-    navigate('/cars')
-  }
-
-  return (
-    <>
-      <SeoMeta
-        title="Car Rental Zanzibar | Rent a Car & Explore Zanzibar"
-        description="Find cars for rent in Zanzibar and connect directly with local car owners. Explore Stone Town, Nungwi, Paje, Jambiani, Kendwa and more."
-        canonical="/"
-        image="https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80"
-        structuredData={{
-          '@context': 'https://schema.org',
-          '@type': 'WebSite',
-          name: 'Zanzibar Ride',
-          url: SITE_URL,
-          description: 'Car rental Zanzibar marketplace for travelers looking to explore the island by car.',
-          potentialAction: {
-            '@type': 'SearchAction',
-            target: `${SITE_URL}/cars?q={search_term_string}`,
-            'query-input': 'required name=search_term_string',
-          },
-        }}
-      />
-
-      <section className="hero-section">
-        <div className="container hero-grid">
-          <div className="hero-copy">
-            <span className="eyebrow">Zanzibar car rental</span>
-            <h1>Explore Zanzibar Your Way.</h1>
-            <p>
-              Find the right car for your island adventure and connect directly with local car owners.
-            </p>
-            <div className="hero-actions">
-              <Link to="/cars" className="primary-btn big-btn">Explore Cars</Link>
-            </div>
-            <ul className="hero-points">
-              <li>✔ Easy WhatsApp and phone contact</li>
-              <li>✔ Flexible daily travel plans</li>
-              <li>✔ Direct connection with local owners</li>
-            </ul>
-          </div>
-          <div className="hero-card">
-            <div className="stat-card">
-              <strong>Island-ready</strong>
-              <span>explore Zanzibar with freedom</span>
-            </div>
-            <div className="stat-card muted">
-              <strong>Local</strong>
-              <span>talk directly to the owner</span>
-            </div>
-            <div className="mini-badge-row">
-              <span>Stone Town</span>
-              <span>Nungwi</span>
-              <span>Paje</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="search-panel container">
-        <form className="search-box" onSubmit={handleSearch}>
-          <input
-            type="text"
-            value={filters.search}
-            onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value }))}
-            placeholder="Search Stone Town, Nungwi, Paje..."
-          />
-          <button type="submit" className="primary-btn">Find My Car</button>
-        </form>
-      </section>
-
-      <section className="container section-block destination-block">
-        <div className="section-header">
-          <div>
-            <span className="eyebrow">Where will Zanzibar take you?</span>
-            <h2>Popular destinations for your island trip</h2>
-          </div>
-        </div>
-        <div className="destination-row">
-          <Link to="/location/stone-town">Stone Town</Link>
-          <Link to="/location/nungwi">Nungwi</Link>
-          <Link to="/location/kendwa">Kendwa</Link>
-          <Link to="/location/paje">Paje</Link>
-          <Link to="/location/jambiani">Jambiani</Link>
-          <Link to="/location/matemwe">Matemwe</Link>
-          <Link to="/location/kiwengwa">Kiwengwa</Link>
-        </div>
-      </section>
-
-      <section className="container section-block destination-showcase">
-        <div className="destination-grid">
-          <Link to="/location/stone-town" className="destination-card">
-            <h3>Stone Town</h3>
-            <p>Historic streets, culture, markets and city energy.</p>
-          </Link>
-          <Link to="/location/nungwi" className="destination-card">
-            <h3>Nungwi</h3>
-            <p>Coastal roads and beachside escapes in the north.</p>
-          </Link>
-          <Link to="/location/paje" className="destination-card">
-            <h3>Paje</h3>
-            <p>East-coast beaches and an easygoing island vibe.</p>
-          </Link>
-          <Link to="/location/jambiani" className="destination-card">
-            <h3>Jambiani</h3>
-            <p>Quiet village roads and laid-back travel days.</p>
-          </Link>
-        </div>
-      </section>
-
-      <section className="container section-block">
-        <div className="section-header">
-          <div>
-            <span className="eyebrow">Featured rides</span>
-            <h2>Popular cars for your Zanzibar adventure</h2>
-          </div>
-        </div>
-        <div className="car-grid">
-          {featured.map((car) => (
-            <CarCard key={car.id} car={car} />
-          ))}
-        </div>
-      </section>
-
-      <section className="container section-block traveler-reviews">
-        <div className="section-header">
-          <div>
-            <span className="eyebrow">From around the world</span>
-            <h2>Traveler comment examples</h2>
-            <p className="review-disclaimer">Illustrative sample comments for preview only. These are not verified customer submissions.</p>
-          </div>
-          <span className="review-count">100 sample comments</span>
-        </div>
-        <div className="review-grid">
-          {travelerReviews.slice(0, visibleReviewCount).map((review) => (
-            <article className="review-card" key={review.id}>
-              <div className="review-card-top">
-                <span className="review-country">Traveler from {review.country}</span>
-                <span className="review-rating" aria-label={`${review.rating} out of 5 stars`}>
-                  <span aria-hidden="true">{'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}</span>
-                  <span className="review-rating-value">{review.rating}/5</span>
-                </span>
-              </div>
-              <p>“{review.comment}”</p>
-            </article>
-          ))}
-        </div>
-        {visibleReviewCount < travelerReviews.length && (
-          <button
-            type="button"
-            className="secondary-btn review-more-btn"
-            onClick={() => setVisibleReviewCount((count) => Math.min(count + 6, travelerReviews.length))}
-          >
-            Show more comments ({travelerReviews.length - visibleReviewCount} remaining)
-          </button>
-        )}
-      </section>
-
-      <section className="how-it-works section-block">
-        <div className="container">
-          <div className="section-header center">
-            <div>
-              <span className="eyebrow">How it works</span>
-              <h2>Discover → Choose → Connect → Explore</h2>
-            </div>
-          </div>
-          <div className="steps-grid">
-            <div className="step-card">
-              <span className="step-number">01</span>
-              <h3>Discover</h3>
-              <p>Explore cars available across Zanzibar.</p>
-            </div>
-            <div className="step-card">
-              <span className="step-number">02</span>
-              <h3>Choose</h3>
-              <p>Find a ride that fits your trip, group and daily budget.</p>
-            </div>
-            <div className="step-card">
-              <span className="step-number">03</span>
-              <h3>Connect</h3>
-              <p>Talk directly with the owner through WhatsApp or phone.</p>
-            </div>
-            <div className="step-card">
-              <span className="step-number">04</span>
-              <h3>Explore</h3>
-              <p>Pick up your car and enjoy Zanzibar your way.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="container section-block cta-banner">
-        <div>
-          <span className="eyebrow">Ready for your island trip?</span>
-          <h2>Ready to explore Zanzibar?</h2>
-          <p>Find a car and start planning your island adventure.</p>
-        </div>
-        <Link to="/cars" className="primary-btn big-btn">Explore Cars</Link>
-      </section>
-
-      <section className="container section-block faq-section">
-        <div className="section-header">
-          <div>
-            <span className="eyebrow">FAQ</span>
-            <h2>Common questions about Zanzibar car rental</h2>
-          </div>
-          <Link to="/faq">Read full FAQ</Link>
-        </div>
-
-        <div className="faq-grid">
-          <div className="faq-item">
-            <h3>How can I rent a car in Zanzibar?</h3>
-            <p>Browse available cars, compare the price and location, then contact the owner directly through WhatsApp or phone.</p>
-          </div>
-          <div className="faq-item">
-            <h3>Can I contact the owner directly?</h3>
-            <p>Yes. Each listing includes direct phone and WhatsApp contact options so travelers can arrange the rental quickly.</p>
-          </div>
-          <div className="faq-item">
-            <h3>Are automatic cars available?</h3>
-            <p>Yes, the available listings include different transmission options depending on what owners have listed.</p>
-          </div>
-          <div className="faq-item">
-            <h3>Do I need an account to browse cars?</h3>
-            <p>No. You can browse public listings and contact owners without creating an account.</p>
-          </div>
-        </div>
-      </section>
-    </>
-  )
-}
-
-function CarCard({ car }) {
-  const image = car.image_url || 'https://placehold.co/600x400/0f172a/ffffff?text=Car+Image'
-
-  return (
-    <article className="car-card">
-      <div className="car-image-wrap">
-        <img src={image} alt={`${car.title} available for rent in ${car.location}, Zanzibar`} />
-      </div>
-      <div className="car-card-body">
-        <h3>{car.title}</h3>
-        <p className="meta-line">Perfect for exploring the island</p>
-        <p className="location-line">📍 {car.location}</p>
-        <p className="meta-line detail-line">{car.transmission} • {car.fuel_type} • {car.seats} Seats</p>
-        <div className="price-row">
-          <strong>{formatPrice(Number(car.price_per_day))}</strong>
-          <span>/ day</span>
-        </div>
-        <Link to={`/cars/${car.id}/${slugify(car.title)}`} className="secondary-btn">View Details</Link>
-      </div>
-    </article>
-  )
-}
-
-function CarsPage({ cars, filters, setFilters }) {
-  const filteredCars = useMemo(() => {
-    return cars.filter((car) => {
-      const matchesSearch = !filters.search || `${car.title} ${car.make} ${car.model} ${car.location}`
-        .toLowerCase()
-        .includes(filters.search.toLowerCase())
-
-      const matchesLocation = !filters.location || car.location.toLowerCase().includes(filters.location.toLowerCase())
-      const matchesTransmission = !filters.transmission || car.transmission === filters.transmission
-      const matchesFuel = !filters.fuel_type || car.fuel_type === filters.fuel_type
-      const matchesSeats = !filters.seats || Number(car.seats) >= Number(filters.seats)
-      const matchesPrice = !filters.max_price || Number(car.price_per_day) <= Number(filters.max_price)
-
-      return matchesSearch && matchesLocation && matchesTransmission && matchesFuel && matchesSeats && matchesPrice
-    })
-  }, [cars, filters])
-
-  const resetFilters = () => {
-    setFilters({ search: '', location: '', transmission: '', fuel_type: '', seats: '', max_price: '' })
-  }
-
-  return (
-    <section className="container catalog-wrap">
-      <SeoMeta
-        title="Cars for Rent in Zanzibar | Zanzibar Car Hire"
-        description="Browse cars for rent in Zanzibar, including options in Stone Town, Nungwi, Paje, Jambiani, Kendwa and more."
-        canonical="/cars"
-      />
-
-      <div className="filters-panel">
-          <h3>Find your ride in Zanzibar</h3>
-          <div className="filter-grid">
-            <input
-              type="text"
-              value={filters.search}
-              onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
-              placeholder="Search Stone Town, Nungwi, Paje..."
-            />
-            <input
-              type="text"
-              value={filters.location}
-              onChange={(e) => setFilters((prev) => ({ ...prev, location: e.target.value }))}
-              placeholder="Where are you staying?"
-            />
-            <input
-              type="number"
-              value={filters.max_price}
-              onChange={(e) => setFilters((prev) => ({ ...prev, max_price: e.target.value }))}
-              placeholder="What's your daily budget?"
-            />
-            <select value={filters.transmission} onChange={(e) => setFilters((prev) => ({ ...prev, transmission: e.target.value }))}>
-              <option value="">Transmission</option>
-              <option value="Automatic">Automatic</option>
-              <option value="Manual">Manual</option>
-            </select>
-            <select value={filters.fuel_type} onChange={(e) => setFilters((prev) => ({ ...prev, fuel_type: e.target.value }))}>
-              <option value="">What kind of car do you need?</option>
-          </select>
-          <select value={filters.seats} onChange={(e) => setFilters((prev) => ({ ...prev, seats: e.target.value }))}>
-            <option value="">Seats</option>
-            <option value="4">4+ Seats</option>
-            <option value="5">5+ Seats</option>
-            <option value="7">7+ Seats</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="results-block">
-        <div className="section-header">
-          <div>
-            <span className="eyebrow">Ready to go</span>
-            <h2>{filteredCars.length} rides ready to explore Zanzibar</h2>
-          </div>
-          <button type="button" className="secondary-btn small-btn" onClick={resetFilters}>Clear Filters</button>
-        </div>
-
-        {filteredCars.length === 0 ? (
-          <div className="empty-state">
-            <strong>No rides found for your search.</strong>
-            <span>Try another location, price range, or vehicle type.</span>
-          </div>
-        ) : (
-          <div className="car-grid">
-            {filteredCars.map((car) => (
-              <CarCard key={car.id} car={car} />
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  )
-}
-
-function BookingForm({ car }) {
-  const [booking, setBooking] = useState({
-    name: '',
-    phone: '',
-    startDate: '',
-    endDate: '',
-  })
-  const [submitted, setSubmitted] = useState(false)
-
-  const totalDays = (() => {
-    if (!booking.startDate || !booking.endDate) return 0
-    const start = new Date(booking.startDate)
-    const end = new Date(booking.endDate)
-    const diff = Math.ceil((end - start) / (1000 * 60 * 60 * 24))
-    return diff > 0 ? diff : 0
-  })()
-
-  const totalPrice = Number(car.price_per_day || 0) * totalDays
-
-  const handleSubmit = (event) => {
-    event.preventDefault()
-    if (!booking.name || !booking.phone || !booking.startDate || !booking.endDate || totalDays <= 0) {
-      return
-    }
-
-    const message = `Hello, I would like to book ${car.title}. Name: ${booking.name}. Phone: ${booking.phone}. Start date: ${booking.startDate}. End date: ${booking.endDate}. Total rental days: ${totalDays}. Estimated total: ${formatPrice(totalPrice)}.`
-
-    window.open(getWhatsAppLink(car.owner.phone, message), '_blank', 'noopener,noreferrer')
-    setSubmitted(true)
-  }
-
-  return (
-    <div className="booking-box">
-      <h3>Plan your Zanzibar trip</h3>
-      {submitted ? (
-        <div className="success-box">Your message is ready to send to the owner.</div>
-      ) : (
-        <form className="booking-form" onSubmit={handleSubmit}>
-          <div className="booking-grid">
-            <input
-              type="text"
-              placeholder="Your name"
-              value={booking.name}
-              onChange={(event) => setBooking((prev) => ({ ...prev, name: event.target.value }))}
-              required
-            />
-            <input
-              type="tel"
-              placeholder="Phone number"
-              value={booking.phone}
-              onChange={(event) => setBooking((prev) => ({ ...prev, phone: event.target.value }))}
-              required
-            />
-            <input
-              type="date"
-              value={booking.startDate}
-              onChange={(event) => setBooking((prev) => ({ ...prev, startDate: event.target.value }))}
-              required
-            />
-            <input
-              type="date"
-              value={booking.endDate}
-              onChange={(event) => setBooking((prev) => ({ ...prev, endDate: event.target.value }))}
-              required
-            />
-          </div>
-
-          <div className="booking-summary">
-            <span>Rental days: {totalDays || 0}</span>
-            <strong>Total: {totalDays > 0 ? formatPrice(totalPrice) : formatPrice(0)}</strong>
-          </div>
-
-          <button type="submit" className="primary-btn full-width">Send My Inquiry</button>
-        </form>
-      )}
-    </div>
-  )
-}
-
-function CarDetailsPage({ cars }) {
-  const { id } = useParams()
-  const carId = Number(id)
-  const car = cars.find((item) => item.id === carId)
-
-  if (!car) {
-    return (
-      <>
-        <SeoMeta title="Car Not Found | Zanzibar Car Rental" description="The requested car listing could not be found." canonical="/cars" />
-        <div className="container empty-state">Car not found.</div>
-      </>
-    )
-  }
-
-  const image = car.image_url || 'https://placehold.co/1200x800/0f172a/ffffff?text=Car+Image'
-  const title = `${car.make || 'Vehicle'} ${car.model || car.title} for Rent in ${car.location}, Zanzibar`
-  const description = `Rent a ${car.make || ''} ${car.model || car.title} in ${car.location}, Zanzibar from ${formatPrice(Number(car.price_per_day))}/day. View vehicle details and contact the owner directly.`
-  const canonical = `/cars/${car.id}/${slugify(car.title)}`
-
-  return (
-    <>
-      <SeoMeta title={title} description={description} canonical={canonical} image={image} type="article" structuredData={{
-        '@context': 'https://schema.org',
-        '@type': 'Car',
-        name: car.title,
-        brand: { '@type': 'Brand', name: car.make },
-        model: car.model,
-        vehicleType: 'Car',
-        description: car.description,
-        offers: {
-          '@type': 'Offer',
-          price: Number(car.price_per_day || 0),
-          priceCurrency: 'TZS',
-          availability: 'https://schema.org/InStock',
-          url: `${SITE_URL}${canonical}`,
-        },
-        image,
-        areaServed: car.location,
-      }} />
-
-      <section className="container details-wrap">
-        <div className="details-image">
-          <img src={image} alt={`${car.title} available for rent in ${car.location}, Zanzibar`} />
-        </div>
-        <div className="details-content">
-          <span className="eyebrow">{car.availability === 'Available' ? 'Ready for your journey' : 'Currently unavailable'}</span>
-          <h1>{car.title}</h1>
-          <p className="detail-price">From {formatPrice(Number(car.price_per_day))} / day</p>
-          <div className="detail-grid">
-            <div><strong>Make:</strong> {car.make}</div>
-            <div><strong>Model:</strong> {car.model}</div>
-            <div><strong>Year:</strong> {car.year}</div>
-            <div><strong>Location:</strong> {car.location}</div>
-            <div><strong>Transmission:</strong> {car.transmission}</div>
-            <div><strong>Fuel type:</strong> {car.fuel_type}</div>
-            <div><strong>Seats:</strong> {car.seats}</div>
-            <div><strong>Registration:</strong> {car.registration_number}</div>
-          </div>
-
-          <div className="detail-note-box">
-            <h3>Why this car could be right for your trip</h3>
-            <p className="description">{car.description}</p>
-          </div>
-
-          <div className="contact-actions">
-            <a className="primary-btn" href={`tel:${car.owner.phone}`}>📞 Call Owner</a>
-            <a className="secondary-btn" href={getWhatsAppLink(car.owner.phone, car.title)} target="_blank" rel="noreferrer">
-              💬 WhatsApp Owner
-            </a>
-          </div>
-
-          <BookingForm car={car} />
-
-          <div className="owner-box">
-            <h3>Meet Your Car Owner</h3>
-            <p><strong>Name:</strong> {car.owner.full_name}</p>
-            <p><strong>Location:</strong> {car.location}</p>
-            <p><strong>Phone:</strong> {car.owner.phone}</p>
-            <p className="owner-copy">Connect directly with the owner to discuss your rental and travel plans.</p>
-          </div>
-        </div>
-      </section>
-    </>
-  )
-}
-
-function OwnerLoginPage({ setUser }) {
-  const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', password: '' })
-  const [error, setError] = useState('')
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-
-    try {
-      const response = await fetch(`${API_BASE}/auth/login/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-        credentials: 'include',
-      })
-
-      const data = await parseJsonResponse(response)
-      if (!response.ok) {
-        throw new Error(Object.values(data)[0]?.[0] || data.message || 'Login failed')
-      }
-
-      setUser(data.user)
-      navigate('/dashboard')
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  return (
-    <section className="auth-page">
-      <div className="auth-card">
-        <h2>Owner Login</h2>
-        {error && <div className="error-box">{error}</div>}
-        <form onSubmit={handleSubmit} className="auth-form">
-          <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-          <input type="password" placeholder="Password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
-          <button type="submit" className="primary-btn full-width">Login</button>
-        </form>
-      </div>
-    </section>
-  )
-}
-
-function DashboardPage({ user, cars, setCars }) {
-  const navigate = useNavigate()
-
-  const activeUser = user || { id: 1, full_name: 'Owner' }
-
-  const myCars = cars.filter((car) => car.owner.id === activeUser.id)
-  const availableCount = myCars.filter((car) => car.availability === 'Available').length
-  const unavailableCount = myCars.filter((car) => car.availability === 'Unavailable').length
-
-  const handleDelete = async (carId) => {
-    const confirmed = window.confirm('Are you sure you want to remove this car?')
-    if (!confirmed) return
-
-    const response = await fetch(`${API_BASE}/cars/${carId}/`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-    })
-
-    if (response.ok) {
-      setCars((prev) => prev.filter((car) => car.id !== carId))
-    }
-  }
-
-  return (
-    <section className="container dashboard-wrap">
-      <div className="dashboard-head">
-        <div>
-          <span className="eyebrow">Owner dashboard</span>
-          <h2>Welcome, {user.full_name}</h2>
-        </div>
-        <Link to="/dashboard/add-car" className="primary-btn">+ Add New Car</Link>
-      </div>
-
-      <div className="stats-grid">
-        <div className="stat-box"><span>My Cars</span><strong>{myCars.length}</strong></div>
-        <div className="stat-box"><span>Available</span><strong>{availableCount}</strong></div>
-        <div className="stat-box"><span>Unavailable</span><strong>{unavailableCount}</strong></div>
-      </div>
-
-      <div className="dashboard-list">
-        {myCars.length === 0 ? (
-          <div className="empty-state">No cars listed yet.</div>
-        ) : (
-          myCars.map((car) => (
-            <div key={car.id} className="dashboard-row">
-              <div>
-                <span className="dash-title">{car.title}</span>
-                <span className={`status-pill ${car.availability === 'Available' ? 'status-pill--available' : 'status-pill--unavailable'}`}>{car.availability}</span>
-              </div>
-              <div className="row-actions">
-                <Link to={`/dashboard/edit-car/${car.id}`} className="secondary-btn small-btn">Edit</Link>
-                <button type="button" className="danger-btn small-btn" onClick={() => handleDelete(car.id)}>Delete</button>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  )
-}
-
-function AddCarPage({ user, setCars }) {
-  const navigate = useNavigate()
-  const [form, setForm] = useState(defaultForm)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setSuccess('')
-
-    try {
-      const payload = new FormData()
-      Object.entries(form).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== '') {
-          payload.append(key, value)
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible')
+          observer.unobserve(entry.target)
         }
       })
-
-      const response = await fetch(`${API_BASE}/cars/`, {
-        method: 'POST',
-        body: payload,
-        credentials: 'include',
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(Object.values(data)[0]?.[0] || 'Unable to add car')
-      }
-
-      setCars((prev) => [data, ...prev])
-      setSuccess('Car added successfully.')
-      setForm(defaultForm)
-      navigate('/dashboard')
-    } catch (err) {
-      setError(err.message)
-    }
-  }
-
-  return (
-    <section className="container form-page">
-      <div className="auth-card wide-card">
-        <h2>Add New Car</h2>
-        {error && <div className="error-box">{error}</div>}
-        {success && <div className="success-box">{success}</div>}
-
-        <form className="auth-form form-grid" onSubmit={handleSubmit} encType="multipart/form-data">
-          <input type="text" placeholder="Car Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-          <input type="text" placeholder="Make" value={form.make} onChange={(e) => setForm({ ...form, make: e.target.value })} required />
-          <input type="text" placeholder="Model" value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
-          <input type="number" placeholder="Year" value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} required />
-          <input type="text" placeholder="Registration Number" value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} required />
-          <input type="number" placeholder="Price Per Day" value={form.price_per_day} onChange={(e) => setForm({ ...form, price_per_day: e.target.value })} required />
-          <input type="text" placeholder="Location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} required />
-          <select value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })}>
-            <option value="Automatic">Automatic</option>
-            <option value="Manual">Manual</option>
-          </select>
-          <select value={form.fuel_type} onChange={(e) => setForm({ ...form, fuel_type: e.target.value })} required>
-            <option value="">Fuel Type</option>
-            <option value="Petrol">Petrol</option>
-            <option value="Diesel">Diesel</option>
-          </select>
-          <input type="number" placeholder="Number of Seats" value={form.seats} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
-          <select value={form.availability} onChange={(e) => setForm({ ...form, availability: e.target.value })}>
-            <option value="Available">Available</option>
-            <option value="Unavailable">Unavailable</option>
-          </select>
-          <textarea rows="4" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
-          <input type="file" accept="image/*" onChange={(e) => setForm({ ...form, image: e.target.files[0] })} />
-          <button type="submit" className="primary-btn full-width">Save Car</button>
-        </form>
-      </div>
-    </section>
-  )
+    }, { threshold: 0.12, rootMargin: '0px 0px -6% 0px' })
+    elements.forEach((element) => observer.observe(element))
+    return () => observer.disconnect()
+  }, [key])
 }
 
-function EditCarPage({ user, cars, setCars }) {
-  const navigate = useNavigate()
-  const id = Number(window.location.pathname.split('/').at(-1))
-  const car = cars.find((item) => item.id === id)
-  const [form, setForm] = useState(car || defaultForm)
+function useParallax(key) {
+  useEffect(() => {
+    if (prefersReducedMotion()) return undefined
+    const layers = [...document.querySelectorAll('[data-parallax]')]
+    if (!layers.length) return undefined
+    let frame = 0
+    const update = () => {
+      frame = 0
+      const viewport = window.innerHeight
+      layers.forEach((layer) => {
+        const box = layer.parentElement.getBoundingClientRect()
+        if (box.bottom < 0 || box.top > viewport) return
+        const speed = Number(layer.dataset.parallax) || 0.15
+        const offset = (box.top + box.height / 2 - viewport / 2) * -speed
+        layer.style.transform = `translate3d(0, ${offset.toFixed(1)}px, 0)`
+      })
+    }
+    const schedule = () => { if (!frame) frame = window.requestAnimationFrame(update) }
+    update()
+    window.addEventListener('scroll', schedule, { passive: true })
+    window.addEventListener('resize', schedule)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('scroll', schedule)
+      window.removeEventListener('resize', schedule)
+    }
+  }, [key])
+}
+
+function Brand({ inverted = false, onClick }) {
+  return <Link className={`brand${inverted ? ' brand-inverted' : ''}`} to="/" aria-label="Zanzibar Ride home" onClick={onClick}>
+    <span className="brand-mark" aria-hidden="true">Z</span>
+    <span className="brand-copy"><strong>ZANZIBAR RIDE</strong><small>ISLAND TRANSFERS</small></span>
+  </Link>
+}
+
+function Header() {
+  const location = useLocation()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [activeSection, setActiveSection] = useState('')
+  const isHome = location.pathname === '/'
+  const overHero = isHome || destinations.some((place) => location.pathname === `/destinations/${place.slug}`)
+  const closeMenu = () => setMenuOpen(false)
 
   useEffect(() => {
-    if (car) setForm(car)
-  }, [car])
+    const onScroll = () => setScrolled(window.scrollY > 32)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-  if (!car) return <div className="container empty-state">Car not found.</div>
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    const payload = new FormData()
-    Object.entries(form).forEach(([key, value]) => {
-      if (key === 'owner' || key === 'gallery' || key === 'image_url' || key === 'created_at' || key === 'updated_at') return
-      if (value !== null && value !== undefined && value !== '') payload.append(key, value)
-    })
-
-    const response = await fetch(`${API_BASE}/cars/${id}/`, {
-      method: 'PUT',
-      body: payload,
-      headers: { Authorization: `Session ${localStorage.getItem('sessionid') || ''}` },
-      credentials: 'include',
-    })
-
-    if (response.ok) {
-      const updated = await response.json()
-      setCars((prev) => prev.map((item) => (item.id === id ? updated : item)))
-      navigate('/dashboard')
+  useEffect(() => {
+    document.body.classList.toggle('menu-open', menuOpen)
+    if (!menuOpen) return undefined
+    const onKey = (event) => { if (event.key === 'Escape') setMenuOpen(false) }
+    const onResize = () => { if (window.innerWidth > 960) setMenuOpen(false) }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('resize', onResize)
+    return () => {
+      document.body.classList.remove('menu-open')
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('resize', onResize)
     }
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (!isHome || !('IntersectionObserver' in window)) return undefined
+    const sections = navLinks.map(([, id]) => document.getElementById(id)).filter(Boolean)
+    const visible = new Set()
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) visible.add(entry.target.id)
+        else visible.delete(entry.target.id)
+      })
+      setActiveSection(navLinks.map(([, id]) => id).find((id) => visible.has(id)) || '')
+    }, { rootMargin: '-40% 0px -55% 0px' })
+    sections.forEach((section) => observer.observe(section))
+    return () => observer.disconnect()
+  }, [isHome])
+
+  const headerClass = ['site-header', scrolled || !overHero ? 'is-solid' : 'is-transparent', menuOpen ? 'menu-is-open' : ''].filter(Boolean).join(' ')
+
+  return (
+    <header className={headerClass}>
+      <a className="skip-link" href="#main-content">Skip to content</a>
+      <div className="nav-wrap">
+        <Brand onClick={closeMenu} />
+        <nav className={`main-nav${menuOpen ? ' is-open' : ''}`} id="main-navigation" aria-label="Main navigation">
+          <div className="main-nav-links">
+            <Link to="/" onClick={closeMenu} style={{ '--i': 0 }} aria-current={isHome && !activeSection && !scrolled ? 'page' : undefined}><span className="nav-index" aria-hidden="true">00</span>Home</Link>
+            {navLinks.map(([label, id], index) => <a key={label} href={`/#${id}`} onClick={closeMenu} style={{ '--i': index + 1 }} aria-current={isHome && activeSection === id ? 'location' : undefined}><span className="nav-index" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>{label}</a>)}
+          </div>
+          <div className="mobile-nav-footer">
+            <a className="button button-light mobile-book" href="/#booking" onClick={closeMenu}><ButtonContent>Book your transfer</ButtonContent></a>
+            <p>Karibu Zanzibar · Private island transfers</p>
+          </div>
+        </nav>
+        <a className="nav-book desktop-book" href="/#booking"><span>Book your transfer</span><Icon name="arrow" /></a>
+        <button className="menu-toggle" type="button" aria-expanded={menuOpen} aria-controls="main-navigation" onClick={() => setMenuOpen(!menuOpen)}>
+          <span className="menu-lines" aria-hidden="true"><i /><i /></span><span className="sr-only">{menuOpen ? 'Close menu' : 'Open menu'}</span>
+        </button>
+      </div>
+    </header>
+  )
+}
+
+function SectionHeading({ eyebrow, title, text, light = false, split = false }) {
+  return <div className={`section-heading${light ? ' section-heading-light' : ''}${split ? ' section-heading-split' : ''}`} data-reveal>
+    <div className="section-heading-title"><span className="eyebrow">{eyebrow}</span><h2>{title}</h2></div>
+    {text && <p>{text}</p>}
+  </div>
+}
+
+function Field({ label, error, optional = false, marker = true, wide = false, children }) {
+  return <label className={`field${wide ? ' form-wide' : ''}`}>
+    <span className="field-label">{label}{optional && <span className="field-optional">Optional</span>}{!optional && marker && <span className="field-required" aria-hidden="true">*</span>}</span>
+    {children}
+    {error && <span className="field-error">{error}</span>}
+  </label>
+}
+
+function TransferInquiry() {
+  const location = useLocation()
+  const [form, setForm] = useState(() => {
+    const params = new URLSearchParams(location.search)
+    return { fullName: '', whatsapp: '', pickup: '', destination: params.get('destination') || '', date: '', time: '', passengers: '1', type: params.get('service') || '', notes: '' }
+  })
+  const [status, setStatus] = useState('')
+
+  useEffect(() => {
+    if (location.hash === '#booking') {
+      document.getElementById('booking')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [location.hash])
+
+  const update = (event) => {
+    setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
+    setStatus('')
   }
 
-  return (
-    <section className="container form-page">
-      <div className="auth-card wide-card">
-        <h2>Edit Car</h2>
-        <form className="auth-form form-grid" onSubmit={handleSubmit}>
-          <input type="text" value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
-          <input type="text" value={form.make || ''} onChange={(e) => setForm({ ...form, make: e.target.value })} required />
-          <input type="text" value={form.model || ''} onChange={(e) => setForm({ ...form, model: e.target.value })} required />
-          <input type="number" value={form.year || ''} onChange={(e) => setForm({ ...form, year: e.target.value })} required />
-          <input type="text" value={form.registration_number || ''} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} required />
-          <input type="number" value={form.price_per_day || ''} onChange={(e) => setForm({ ...form, price_per_day: e.target.value })} required />
-          <input type="text" value={form.location || ''} onChange={(e) => setForm({ ...form, location: e.target.value })} required />
-          <select value={form.transmission || 'Automatic'} onChange={(e) => setForm({ ...form, transmission: e.target.value })}>
-            <option value="Automatic">Automatic</option>
-            <option value="Manual">Manual</option>
-          </select>
-          <select value={form.fuel_type || ''} onChange={(e) => setForm({ ...form, fuel_type: e.target.value })} required>
-            <option value="">Fuel Type</option>
-            <option value="Petrol">Petrol</option>
-            <option value="Diesel">Diesel</option>
-          </select>
-          <input type="number" value={form.seats || ''} onChange={(e) => setForm({ ...form, seats: e.target.value })} required />
-          <select value={form.availability || 'Available'} onChange={(e) => setForm({ ...form, availability: e.target.value })}>
-            <option value="Available">Available</option>
-            <option value="Unavailable">Unavailable</option>
-          </select>
-          <textarea rows="4" value={form.description || ''} onChange={(e) => setForm({ ...form, description: e.target.value })} required />
-          <button type="submit" className="primary-btn full-width">Update Car</button>
-        </form>
+  const submit = (event) => {
+    event.preventDefault()
+    if (!WHATSAPP_NUMBER) {
+      setStatus('The business WhatsApp number has not been configured on this website yet.')
+      return
+    }
+    const message = [
+      'Hello Zanzibar Ride, I would like to enquire about a transfer.',
+      '', `Name: ${form.fullName}`, `My WhatsApp: ${form.whatsapp}`,
+      `Pickup location: ${form.pickup}`, `Destination: ${form.destination}`,
+      `Pickup date: ${form.date}`, `Pickup time: ${form.time}`,
+      `Passengers: ${form.passengers}`, `Transportation type: ${form.type}`,
+      `Additional information: ${form.notes || 'None'}`,
+      '', 'Please confirm availability and pricing. I understand this inquiry is not a confirmed booking.',
+    ].join('\n')
+    window.location.assign(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`)
+  }
+
+  return <section className="booking-section" id="booking">
+    <div className="booking-layout container">
+      <div className="booking-copy" data-reveal>
+        <span className="eyebrow">A good journey starts here</span>
+        <h2>Tell us where you’re <em>headed.</em></h2>
+        <p>Share your travel details and we’ll continue the conversation on WhatsApp. Availability and pricing are confirmed directly with you.</p>
+        {(PHONE_NUMBER || CONTACT_EMAIL || WHATSAPP_NUMBER) && <div className="booking-contact-links">
+          {PHONE_NUMBER && <a href={`tel:${PHONE_NUMBER}`}><Icon name="phone" /><span>Call us</span><Icon name="arrow" className="icon icon-end" /></a>}
+          {CONTACT_EMAIL && <a href={`mailto:${CONTACT_EMAIL}`}><Icon name="mail" /><span>Email us</span><Icon name="arrow" className="icon icon-end" /></a>}
+          {WHATSAPP_NUMBER && <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer"><Icon name="whatsapp" /><span>WhatsApp</span><Icon name="arrow" className="icon icon-end" /></a>}
+        </div>}
+        <p className="booking-note"><Icon name="info" />Your message is an inquiry, not an automatic confirmation.</p>
       </div>
-    </section>
-  )
+      <form className="inquiry-form" onSubmit={submit} data-reveal>
+        <fieldset className="form-group">
+          <legend><span>01</span>Your details</legend>
+          <div className="form-grid">
+            <Field label="Full name" error="Please tell us your name."><input autoComplete="name" name="fullName" value={form.fullName} onChange={update} placeholder="Your name" required /></Field>
+            <Field label="WhatsApp number" error="We need a number to reply on WhatsApp."><input autoComplete="tel" type="tel" name="whatsapp" value={form.whatsapp} onChange={update} placeholder="Include country code" required /></Field>
+          </div>
+        </fieldset>
+        <fieldset className="form-group">
+          <legend><span>02</span>Your journey</legend>
+          <div className="form-grid">
+            <Field label="Pickup location" error="Add an airport, hotel or address."><input name="pickup" value={form.pickup} onChange={update} placeholder="Airport, hotel or address" required /></Field>
+            <Field label="Destination" error="Where would you like to go?"><input name="destination" value={form.destination} onChange={update} placeholder="Where would you like to go?" required /></Field>
+            <Field label="Pickup date" error="Choose a date from today onwards."><input type="date" min={today()} name="date" value={form.date} onChange={update} required /></Field>
+            <Field label="Pickup time" error="Choose a pickup time."><input type="time" name="time" value={form.time} onChange={update} required /></Field>
+          </div>
+        </fieldset>
+        <fieldset className="form-group">
+          <legend><span>03</span>Trip details</legend>
+          <div className="form-grid">
+            <Field label="Passengers" marker={false}><select name="passengers" value={form.passengers} onChange={update}>{Array.from({ length: 14 }, (_, index) => <option key={index + 1} value={index + 1}>{index + 1}{index === 13 ? '+' : ''} {index === 0 ? 'passenger' : 'passengers'}</option>)}</select></Field>
+            <Field label="Transportation type" error="Choose the service you need."><select name="type" value={form.type} onChange={update} required><option value="">Choose a service</option>{['Airport Transfers', 'Hotel Transfers', 'Private Island Tours', 'Beach Transfers', 'Full-Day Transportation', 'Half-Day Transportation', 'Hotel-to-Hotel Transfers', 'Family & Group Transfers', 'Customized Tourist Trip', 'Stone Town Transportation'].map((option) => <option key={option} value={option}>{option}</option>)}</select></Field>
+            <Field label="Additional information" optional wide><textarea name="notes" value={form.notes} onChange={update} placeholder="Flight number, luggage, stops or anything else we should know" rows="3" /></Field>
+          </div>
+        </fieldset>
+        <div className="form-footer">
+          <button className="button button-primary form-submit" type="submit"><ButtonContent>Continue to WhatsApp</ButtonContent></button>
+          <p className="form-hint"><Icon name="whatsapp" />Your details open in WhatsApp, ready to send.</p>
+        </div>
+        <p className="form-status" role="status" aria-live="polite">{status}</p>
+      </form>
+    </div>
+  </section>
 }
 
-function AboutPage() {
-  return (
-    <>
-      <SeoMeta
-        title="About Zanzibar | Car Rental & Travel Guide"
-        description="Learn more about Zanzibar, the best areas to explore and how a rental car helps you travel comfortably around the island."
-        canonical="/about"
-      />
+function PhotoCredits() {
+  return <details className="photo-credits">
+    <summary>Photo credits</summary>
+    <ul>{PHOTO_CREDITS.map(([file, author, license]) => <li key={file}><a href={`https://commons.wikimedia.org/wiki/File:${encodeURIComponent(file.replace(/ /g, '_'))}`} target="_blank" rel="noreferrer">{file.replace(/\.(jpe?g|png)$/i, '')}</a> · {author} · {license}, via Wikimedia Commons</li>)}</ul>
+  </details>
+}
 
-      <section className="container simple-page about-page">
-        <div className="about-intro">
-          <span className="eyebrow">About Zanzibar</span>
-          <h1>Explore Zanzibar with confidence.</h1>
-          <p>
-            Zanzibar is a dream island for travelers who want a mix of beachtime, culture, colorful markets and easy road trips.
-            With a car, you can move at your own pace between historic Stone Town, the quieter east coast and the lively northern beaches without depending on fixed schedules.
-          </p>
+function Footer() {
+  return <footer className="site-footer" id="contact">
+    <div className="container">
+      <div className="footer-top">
+        <p className="footer-statement">Thoughtful private transportation for your time on the island.</p>
+        <a className="button button-light" href="/#booking"><ButtonContent>Book your transfer</ButtonContent></a>
+      </div>
+      <div className="footer-main">
+        <div className="footer-brand"><Brand inverted /><span className="footer-coords">06°09′ S · KARIBU · ZANZIBAR, TANZANIA</span></div>
+        <div className="footer-col"><h3>Explore</h3><a href="/#services">Our services</a><a href="/#destinations">Destinations</a><a href="/#inspiration">Zanzibar guide</a></div>
+        <div className="footer-col"><h3>Get in touch</h3>{PHONE_NUMBER ? <a href={`tel:${PHONE_NUMBER}`}>{PHONE_NUMBER}</a> : <span>Private transfers across Zanzibar</span>}{CONTACT_EMAIL && <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>}{WHATSAPP_NUMBER && <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noreferrer">Message on WhatsApp</a>}</div>
+      </div>
+      <div className="footer-bottom"><span>© {CURRENT_YEAR} Zanzibar Ride</span><span>Availability and pricing are confirmed directly with our team.</span></div>
+      <PhotoCredits />
+    </div>
+  </footer>
+}
+
+function WhatsAppFloat() {
+  if (!WHATSAPP_NUMBER) return null
+  return <a className="whatsapp-float" href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hello Zanzibar Ride, I would like to arrange transportation in Zanzibar.')}`} target="_blank" rel="noreferrer" aria-label="Contact Zanzibar Ride on WhatsApp"><Icon name="whatsapp" /></a>
+}
+
+function MobileBookingBar() {
+  const [bookingVisible, setBookingVisible] = useState(false)
+  const location = useLocation()
+
+  useEffect(() => {
+    const bookingSection = document.getElementById('booking')
+    if (!bookingSection || !('IntersectionObserver' in window)) return undefined
+
+    const observer = new IntersectionObserver(([entry]) => setBookingVisible(entry.isIntersecting), { threshold: 0.1 })
+    observer.observe(bookingSection)
+    return () => observer.disconnect()
+  }, [location.pathname, location.search])
+
+  return <a className={`mobile-booking-bar${bookingVisible ? ' is-hidden' : ''}`} href="#booking" aria-hidden={bookingVisible} tabIndex={bookingVisible ? -1 : 0}><span>Karibu Zanzibar</span><strong>Arrange your transfer</strong><span className="mobile-booking-icon" aria-hidden="true"><Icon name="arrow" /></span></a>
+}
+
+function HomePage() {
+  useReveal('home')
+  useParallax('home')
+  const location = useLocation()
+  const localBusiness = {
+    '@context': 'https://schema.org', '@type': 'LocalBusiness', name: 'Zanzibar Ride', url: SITE_URL,
+    description: 'Private tourist transportation, airport transfers and hotel transfers across Zanzibar.', areaServed: { '@type': 'AdministrativeArea', name: 'Zanzibar, Tanzania' },
+    image: imageUrl(HERO_PHOTO.image, 1280),
+    ...(PHONE_NUMBER ? { telephone: PHONE_NUMBER } : {}), ...(CONTACT_EMAIL ? { email: CONTACT_EMAIL } : {}),
+    makesOffer: services.map((service) => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: service.name } })),
+  }
+  return <>
+    <SeoMeta title="Zanzibar Airport Transfers & Private Island Transport | Zanzibar Ride" description="Arrange private Zanzibar airport transfers, hotel pickups, beach rides and island transportation with a local driver. Plan your journey directly with Zanzibar Ride." image={imageUrl(HERO_PHOTO.image, 1280)} structuredData={localBusiness} />
+    <main id="main-content">
+      <section className="hero-section">
+        <div className="hero-media" data-parallax="0.22">
+          <img className="hero-image" src={imageUrl(HERO_PHOTO.image, 1920)} srcSet={imageSrcSet(HERO_PHOTO.image, [960, 1280, 1920])} sizes="100vw" alt={HERO_PHOTO.alt} fetchPriority="high" style={{ objectPosition: HERO_PHOTO.position }} />
         </div>
-
-        <div className="about-grid">
-          <div className="about-card">
-            <h3>Why travelers love it</h3>
-            <ul>
-              <li>Warm beaches, clear water and a relaxed island pace.</li>
-              <li>Historic streets, spice farms and local culture in every corner.</li>
-              <li>Easy day trips between beaches, villages and coastal towns.</li>
-            </ul>
-          </div>
-
-          <div className="about-card">
-            <h3>Popular areas</h3>
-            <ul>
-              <li>Stone Town for culture, markets and old-city charm.</li>
-              <li>Nungwi and Kendwa for sunsets and northern beach stays.</li>
-              <li>Paje and Jambiani for laid-back east coast vibes.</li>
-            </ul>
-          </div>
-
-          <div className="about-card">
-            <h3>Travel tips</h3>
-            <ul>
-              <li>Plan flexible days to enjoy coastal roads and beach stops.</li>
-              <li>Carry cash for small local shops, markets and roadside snacks.</li>
-              <li>Ask local owners about the best routes and hidden beaches.</li>
-            </ul>
+        <div className="hero-shade" />
+        <div className="hero-content container">
+          <span className="hero-kicker"><i /> KARIBU ZANZIBAR · PRIVATE ISLAND TRANSFERS</span>
+          <h1><span className="hero-line">Explore Zanzibar.</span> <em className="hero-line">We’ll take you there.</em></h1>
+          <div className="hero-lower">
+            <p>Discover the beauty of Zanzibar with comfortable, reliable and private transportation. From airport pickups to unforgettable island adventures, we make every journey easier.</p>
+            <div className="hero-actions"><a className="button button-light" href="#booking"><ButtonContent>Book your transfer</ButtonContent></a><a className="button button-ghost" href="#destinations"><ButtonContent icon="arrowDown">Explore destinations</ButtonContent></a></div>
           </div>
         </div>
-
-        <div className="about-destination-grid">
-          <article className="about-destination">
-            <h3>Stone Town</h3>
-            <p>A UNESCO-listed historic center with winding streets, local markets, cafés and rich Swahili heritage.</p>
-          </article>
-          <article className="about-destination">
-            <h3>Nungwi</h3>
-            <p>Known for long sandy beaches, clear water and beautiful sunsets along the island’s northern edge.</p>
-          </article>
-          <article className="about-destination">
-            <h3>Paje</h3>
-            <p>A popular beach destination for travelers who want a relaxed atmosphere and easy access to the coast.</p>
-          </article>
-          <article className="about-destination">
-            <h3>Jambiani</h3>
-            <p>Quiet, scenic and ideal for slower travel, village exploration and a more local island experience.</p>
-          </article>
+        <div className="hero-footer container">
+          <div className="hero-trust"><span className="trust-rule" /><span>Your journey, your island, your experience.</span></div>
+          <a className="hero-location" href="#destinations"><span>06°09′ S</span><span>KARIBU · ZANZIBAR, TANZANIA</span></a>
         </div>
       </section>
-    </>
-  )
-}
 
-function ContactPage() {
-  return (
-    <>
-      <SeoMeta
-        title="Contact Zanzibar Car Rental Support"
-        description="Need help planning your Zanzibar trip? Contact the local team for car rental questions and support."
-        canonical="/contact"
-      />
-
-      <section className="container simple-page">
-        <span className="eyebrow">Talk to us</span>
-        <h1>Need help planning your trip?</h1>
-        <p>Phone: +255 700 000 000</p>
-        <p>Email: hello@zanzibarride.com</p>
+      <section className="intro-strip">
+        <div className="container intro-inner" data-reveal>
+          <div className="intro-aside"><span className="eyebrow">Karibu, welcome to Zanzibar</span><span className="intro-mark" aria-hidden="true">UNGUJA</span></div>
+          <p>From the first airport pickup to the last sunset stop, get around Zanzibar with a driver who <em>knows the island.</em></p>
+        </div>
       </section>
-    </>
-  )
-}
 
-function FaqPage() {
-  const faqs = [
-    {
-      question: 'How can I rent a car in Zanzibar?',
-      answer: 'Browse the available cars on the site, compare the price and location, and contact the owner directly by WhatsApp or phone to arrange the rental.',
-    },
-    {
-      question: 'How much does it cost to rent a car in Zanzibar?',
-      answer: 'Prices vary depending on the vehicle, location and owner, but each listing shows the daily rate so you can compare options quickly.',
-    },
-    {
-      question: 'Can I contact the car owner directly?',
-      answer: 'Yes. Every listing includes direct WhatsApp and phone contact options so you can confirm details with the owner before booking.',
-    },
-    {
-      question: 'Where can I rent a car in Zanzibar?',
-      answer: 'You can browse listings across popular destinations such as Stone Town, Nungwi, Paje, Jambiani, Kendwa and Matemwe.',
-    },
-    {
-      question: 'Can I find automatic cars in Zanzibar?',
-      answer: 'Yes, vehicle transmission varies by listing. You can filter and compare available cars to find the best option for your trip.',
-    },
-    {
-      question: 'Do I need an account to browse cars?',
-      answer: 'No. Public listings can be browsed without creating an account, and you can contact owners directly when you find a suitable car.',
-    },
-  ]
-
-  return (
-    <>
-      <SeoMeta
-        title="Zanzibar Car Rental FAQ | Rent a Car in Zanzibar"
-        description="Learn how to rent a car in Zanzibar, compare prices and contact car owners directly for your island trip."
-        canonical="/faq"
-        structuredData={{
-          '@context': 'https://schema.org',
-          '@type': 'FAQPage',
-          mainEntity: faqs.map((item) => ({
-            '@type': 'Question',
-            name: item.question,
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: item.answer,
-            },
-          })),
-        }}
-      />
-
-      <section className="container simple-page faq-page">
-        <span className="eyebrow">FAQ</span>
-        <h1>Zanzibar car rental FAQ</h1>
-        <div className="faq-grid faq-grid--stacked">
-          {faqs.map((item) => (
-            <div key={item.question} className="faq-item">
-              <h3>{item.question}</h3>
-              <p>{item.answer}</p>
+      <section className="section-block services-section" id="services">
+        <div className="container">
+          <SectionHeading split eyebrow="Move around with ease" title="A ride for every part of your stay" text="One airport pickup or a whole day exploring. Tell us what your trip needs." />
+          <div className="service-grid">{services.map((service, index) => <article className="service-card" key={service.number} data-reveal style={{ '--i': index % 3 }}>
+            <Link to={`/?service=${encodeURIComponent(service.name)}#booking`} className="service-image" tabIndex={-1} aria-hidden="true"><img src={imageUrl(service.image, 960)} alt={service.alt} loading="lazy" style={{ objectPosition: service.position }} /></Link>
+            <div className="service-body">
+              <span className="service-number">{service.number}</span>
+              <h3>{service.name}</h3>
+              <p>{service.description}</p>
+              <Link className="text-link" to={`/?service=${encodeURIComponent(service.name)}#booking`}>Ask about this service <Icon name="arrow" /></Link>
             </div>
-          ))}
+          </article>)}</div>
         </div>
       </section>
-    </>
-  )
+
+      <section className="section-block destinations-section" id="destinations">
+        <div className="container">
+          <div className="destination-heading-row"><SectionHeading eyebrow="Find your Zanzibar" title="The island is yours to discover" text="From the old town to the far-reaching coast, plan a comfortable ride to the places you came to see." /><span className="destination-count" data-reveal><strong>12</strong> PLACES<br />ONE ISLAND</span></div>
+          <div className="destination-grid">{destinations.map((destination, index) => <article className={`destination-card${index === 0 ? ' destination-card-featured' : ''}`} key={destination.slug} data-reveal style={{ '--i': index % 2 }}>
+            <Link className="destination-photo" to={`/destinations/${destination.slug}`} tabIndex={-1} aria-hidden="true"><img src={imageUrl(destination.image, 960)} alt={destination.alt || `${destination.name}, ${destination.area}`} loading="lazy" style={{ objectPosition: destination.position }} /><span className="destination-area">{destination.area}</span><span className="photo-arrow"><Icon name="arrow" /></span></Link>
+            <div className="destination-info">
+              <span className="destination-index">{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <h3><Link to={`/destinations/${destination.slug}`}>{destination.name}</Link></h3>
+                <p>{destination.description}</p>
+                <div className="destination-actions"><Link className="text-link" to={`/destinations/${destination.slug}`}>Explore destination <Icon name="arrow" /></Link><Link className="text-link text-link-muted" to={`/?destination=${encodeURIComponent(destination.name)}#booking`}>Arrange a ride</Link></div>
+              </div>
+            </div>
+          </article>)}</div>
+        </div>
+      </section>
+
+      <section className="why-section" id="why-us">
+        <div className="container why-layout">
+          <div className="why-intro" data-reveal>
+            <span className="eyebrow eyebrow-light">Travel with a local perspective</span>
+            <h2>Good journeys are about more than <em>the drive.</em></h2>
+            <p>We keep the details straightforward, so you can spend less time figuring out how to get there and more time enjoying the island.</p>
+            <a className="button button-light" href="#booking"><ButtonContent>Plan your journey</ButtonContent></a>
+          </div>
+          <div className="reasons-list">{reasons.map(([title, text], index) => <article className="reason-item" key={title} data-reveal>
+            <span className="reason-icon"><Icon name={reasonIcons[index] || 'compass'} /></span>
+            <div><h3>{title}</h3><p>{text}</p></div>
+            <span className="reason-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+          </article>)}</div>
+        </div>
+      </section>
+
+      <section className="section-block process-section">
+        <div className="container">
+          <SectionHeading split eyebrow="Simple by design" title="From your plans to the pickup" text="No account, no complicated checkout. Just a clear conversation about your trip." />
+          <ol className="steps-grid">{[['01', 'Choose your destination', 'Pick a place, a route or the kind of journey you have in mind.'], ['02', 'Share your travel details', 'Send pickup, timing and passenger information directly to our team.'], ['03', 'Confirm and enjoy Zanzibar', 'We confirm availability and pricing with you before your transfer.']].map(([number, title, text], index) => <li className="step-item" key={number} data-reveal style={{ '--i': index }}><span className="step-number">{number}</span><div className="step-line" /><h3>{title}</h3><p>{text}</p></li>)}</ol>
+        </div>
+      </section>
+
+      <section className="inspiration-section" id="inspiration">
+        <div className="container">
+          <SectionHeading split eyebrow="A little island knowledge" title="Make the most of your time here" text="A few useful ideas for shaping your days around the island." />
+          <div className="inspiration-grid">{travelNotes.map((note, index) => <article className="inspiration-card" key={note.label} data-reveal style={{ '--i': index }}>
+            <Link to={`/destinations/${note.link}`} className="inspiration-image" tabIndex={-1} aria-hidden="true"><img src={imageUrl(note.image, 960)} alt={note.alt} loading="lazy" style={{ objectPosition: note.position }} /><span className="inspiration-label">{note.label}</span></Link>
+            <div className="inspiration-copy"><h3><Link to={`/destinations/${note.link}`}>{note.title}</Link></h3><p>{note.text}</p></div>
+          </article>)}</div>
+          <div className="guide-note" data-reveal><span className="guide-note-mark"><Icon name="info" /></span><p>First visit? Pack light layers, carry cash for small purchases and leave some room in the day for the island’s changing tides and pace.</p></div>
+        </div>
+      </section>
+
+      <section className="closing-cta">
+        <div className="closing-image" data-parallax="0.16" role="img" aria-label={CLOSING_PHOTO.alt} style={{ backgroundImage: `url('${imageUrl(CLOSING_PHOTO.image, 1920)}')`, backgroundPosition: CLOSING_PHOTO.position }} />
+        <div className="closing-shade" />
+        <div className="closing-copy container" data-reveal>
+          <span className="eyebrow eyebrow-light">Your island, at your pace</span>
+          <h2>Your Zanzibar adventure <em>starts here.</em></h2>
+          <p>Whether you’re arriving at the airport, heading to the beach or exploring the island, let us make your journey comfortable and stress-free.</p>
+          <a className="button button-light" href="#booking"><ButtonContent>Arrange your transfer</ButtonContent></a>
+        </div>
+      </section>
+      <TransferInquiry key={location.search} />
+    </main>
+  </>
 }
 
-function LocationPage({ cars }) {
+function DestinationPage() {
   const { slug } = useParams()
-  const meta = locationMeta[slug] || { name: 'Zanzibar', title: 'Car Rental Zanzibar', h1: 'Car Rental in Zanzibar', description: 'Explore available cars for rent around Zanzibar.' }
-  const localCars = cars.filter((car) => car.location && car.location.toLowerCase().includes(meta.name.toLowerCase()))
-  const relatedLocations = Object.entries(locationMeta)
-    .filter(([key]) => key !== slug)
-    .slice(0, 4)
+  useReveal(slug)
+  useParallax(slug)
+  const destination = destinations.find((place) => place.slug === slug)
+  if (!destination) return <main className="not-found container" id="main-content"><span className="eyebrow">A different route?</span><h1>We can’t find that destination.</h1><p>Explore the island’s places and plan a transfer from there.</p><Link className="button button-primary" to="/#destinations"><ButtonContent>See destinations</ButtonContent></Link></main>
 
-  return (
-    <>
-      <SeoMeta
-        title={meta.title}
-        description={meta.description}
-        canonical={`/location/${slug}`}
-        structuredData={{
-          '@context': 'https://schema.org',
-          '@type': 'ItemList',
-          name: `${meta.name} car rental listings`,
-          itemListElement: localCars.slice(0, 10).map((car, index) => ({
-            '@type': 'ListItem',
-            position: index + 1,
-            url: `${SITE_URL}/cars/${car.id}/${slugify(car.title)}`,
-            name: car.title,
-          })),
-        }}
-      />
-
-      <section className="container simple-page location-page">
-        <div className="location-intro">
-          <span className="eyebrow">Car rental in {meta.name}</span>
-          <h1>{meta.h1}</h1>
-          <p>{meta.overview || meta.description}</p>
+  const title = `${destination.name} Transfers, Zanzibar | Private Driver | Zanzibar Ride`
+  const description = `Plan a private transfer to ${destination.name}, ${destination.area}. Explore what to see, where it is and arrange transportation with Zanzibar Ride.`
+  const placeSchema = { '@context': 'https://schema.org', '@type': 'TouristDestination', name: destination.name, description: destination.overview, containedInPlace: { '@type': 'AdministrativeArea', name: 'Zanzibar, Tanzania' }, url: `${SITE_URL}/destinations/${destination.slug}` }
+  const related = destinations.filter((place) => place.slug !== destination.slug).slice(0, 4)
+  return <>
+    <SeoMeta title={title} description={description} image={imageUrl(destination.image, 1280)} structuredData={placeSchema} />
+    <main className="destination-detail" id="main-content">
+      <section className="detail-hero">
+        <div className="detail-media" data-parallax="0.18"><img src={imageUrl(destination.image, 1920)} srcSet={imageSrcSet(destination.image, [960, 1280, 1920])} sizes="100vw" alt={destination.alt || `${destination.name}, ${destination.area}, Zanzibar`} fetchPriority="high" style={{ objectPosition: destination.position }} /></div>
+        <div className="detail-shade" />
+        <div className="container detail-hero-copy" key={destination.slug}>
+          <Link className="back-link" to="/#destinations"><Icon name="arrowLeft" /> All destinations</Link>
+          <span className="eyebrow eyebrow-light">{destination.area} · Zanzibar</span>
+          <h1>{destination.name}</h1>
+          <p>{destination.description}</p>
+          <Link className="button button-light" to={`/?destination=${encodeURIComponent(destination.name)}#booking`}><ButtonContent>Arrange transportation</ButtonContent></Link>
         </div>
-
-        <div className="related-location-list">
-          <strong>Nearby destinations:</strong>
-          {relatedLocations.map(([key, item]) => (
-            <Link key={key} to={`/location/${key}`}>{item.name}</Link>
-          ))}
-        </div>
-
-        {localCars.length === 0 ? (
-          <div className="empty-state">
-            <strong>No cars available in {meta.name} right now.</strong>
-            <p>Browse other Zanzibar locations or explore all available cars.</p>
-            <Link className="primary-btn" to="/cars">Explore All Cars</Link>
-          </div>
-        ) : (
-          <div className="car-grid location-car-grid">
-            {localCars.map((car) => (
-              <CarCard key={car.id} car={car} />
-            ))}
-          </div>
-        )}
       </section>
-    </>
-  )
+      <section className="detail-content container">
+        <div className="detail-overview" data-reveal><span className="eyebrow">A place to explore</span><h2>Get to know {destination.name}</h2><p className="detail-lead">{destination.overview}</p><p>{destination.experience}</p></div>
+        <aside className="location-panel" data-reveal><span className="location-icon"><Icon name="pin" /></span><span className="eyebrow">On the map</span><h3>Where you’ll find it</h3><p>{destination.location}</p><Link className="text-link" to={`/?destination=${encodeURIComponent(destination.name)}#booking`}>Plan a transfer here <Icon name="arrow" /></Link></aside>
+      </section>
+      <section className="detail-activities"><div className="container"><SectionHeading eyebrow="Make a day of it" title={`Things to do around ${destination.name}`} /><ol className="activity-list">{destination.activities.map((activity, index) => <li className="activity-item" key={activity} data-reveal style={{ '--i': index }}><span>{String(index + 1).padStart(2, '0')}</span><p>{activity}</p></li>)}</ol></div></section>
+      <section className="detail-cta"><div className="container detail-cta-inner" data-reveal><div><span className="eyebrow eyebrow-light">Private driver Zanzibar</span><h2>Let’s get you to <em>{destination.name}.</em></h2><p>Send your pickup point and preferred time. We’ll confirm the details and pricing with you directly.</p></div><Link className="button button-light" to={`/?destination=${encodeURIComponent(destination.name)}#booking`}><ButtonContent>Arrange your transfer</ButtonContent></Link></div></section>
+      <section className="related-destinations container"><SectionHeading eyebrow="Keep exploring" title="More of Zanzibar" /><div className="related-links">{related.map((place, index) => <Link key={place.slug} to={`/destinations/${place.slug}`} data-reveal style={{ '--i': index }}><span className="related-photo"><img src={imageUrl(place.image, 500)} alt="" loading="lazy" style={{ objectPosition: place.position }} /></span><span className="related-name">{place.name}<Icon name="arrow" /></span><span className="related-area">{place.area}</span></Link>)}</div></section>
+      <TransferInquiry />
+    </main>
+  </>
 }
 
 function App() {
-  const [cars, setCars] = useState([])
-  const [user, setUser] = useOwnerSession()
-  const [filters, setFilters] = useState({
-    search: '',
-    location: '',
-    transmission: '',
-    fuel_type: '',
-    seats: '',
-    max_price: '',
-  })
-
+  const location = useLocation()
   useEffect(() => {
-    const fetchCars = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/cars/`, { credentials: 'include' })
-        const data = await parseJsonResponse(response)
-        const results = Array.isArray(data) ? data : data.results || []
-        setCars(results.length ? results : sampleCars)
-      } catch {
-        setCars(sampleCars)
-      }
+    if (location.hash) {
+      document.getElementById(location.hash.slice(1))?.scrollIntoView({ behavior: 'smooth' })
+    } else {
+      window.scrollTo({ top: 0, behavior: 'instant' })
     }
-
-    fetchCars()
-  }, [])
-
-  return (
-    <Layout user={user} setUser={setUser}>
-      <Routes>
-        <Route path="/" element={<HomePage cars={cars} filters={filters} setFilters={setFilters} />} />
-        <Route path="/cars" element={<CarsPage cars={cars} filters={filters} setFilters={setFilters} />} />
-        <Route path="/cars/:id" element={<CarDetailsPage cars={cars} />} />
-        <Route path="/cars/:id/:slug" element={<CarDetailsPage cars={cars} />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/contact" element={<ContactPage />} />
-        <Route path="/faq" element={<FaqPage />} />
-        <Route path="/location/:slug" element={<LocationPage cars={cars} />} />
-        <Route path="/dashboard" element={<DashboardPage user={user} cars={cars} setCars={setCars} />} />
-        <Route path="/dashboard/add-car" element={<AddCarPage user={user} setCars={setCars} />} />
-        <Route path="/dashboard/edit-car/:id" element={<EditCarPage user={user} cars={cars} setCars={setCars} />} />
-      </Routes>
-    </Layout>
-  )
+  }, [location.hash, location.pathname])
+  return <><Header /><Routes><Route path="/" element={<HomePage />} /><Route path="/destinations/:slug" element={<DestinationPage />} /><Route path="*" element={<DestinationPage />} /></Routes><Footer /><MobileBookingBar /><WhatsAppFloat /></>
 }
 
 export default App
